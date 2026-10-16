@@ -1,0 +1,16 @@
+[project]
+name = "musica"
+version = "0.1.0"
+description = "Local-first music downloader: paste a link or a song name, send MP3s to your pendrive."
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "yt-dlp>=2025.1.1",
+    "psutil>=6.0",
+    "mutagen>=1.47",
+    "requests>=2.31",
+]
+
+[tool.uv]
+package = false

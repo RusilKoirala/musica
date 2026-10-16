@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0e0c0b">
+<title>Musica</title>
+<link rel="stylesheet" href="/static/styles.css?v=9">
+<script src="/static/app.js?v=10" defer></script>
+</head>
+<body>
+
+<svg class="sprite" aria-hidden="true" focusable="false"><defs>
+  <symbol id="i-disc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 2.8a9.2 9.2 0 0 1 0 18.4" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".45"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.6" cy="10.6" r="6.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15.6 15.6 21 21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3.5v11m0 0 4.2-4.2M12 14.5 7.8 10.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17.5v1.2A1.8 1.8 0 0 0 5.8 20.5h12.4A1.8 1.8 0 0 0 20 18.7v-1.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-drive" viewBox="0 0 24 24"><rect x="3.2" y="7" width="17.6" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M6.5 10.5h4M6.5 13h2.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M17 10.8v1.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 6.6A1.6 1.6 0 0 1 5.1 5h3.6l2 2.4h8.2A1.6 1.6 0 0 1 20.5 9v8.4A1.6 1.6 0 0 1 18.9 19H5.1a1.6 1.6 0 0 1-1.6-1.6z" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 3.2v2.3M12 18.5v2.3M20.8 12h-2.3M5.5 12H3.2M18.2 5.8l-1.6 1.6M7.4 16.6l-1.6 1.6M18.2 18.2l-1.6-1.6M7.4 7.4 5.8 5.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M20.4 3.6v4.2h-4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4.8 12.6 9.4 17 19.2 6.8" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5.5v13M15 5.5v13" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7.5 5.4 18.6 12 7.5 18.6z" fill="currentColor"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.2" y="6.2" width="11.6" height="11.6" rx="2.2" fill="currentColor"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6.4 6.4 17.6 17.6M17.6 6.4 6.4 17.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.2 2.6 5.4 13.4h5l-1.6 8 8-11h-5.2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4.2 21 19.4H3z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 10v3.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="12" cy="16.6" r="1.05" fill="currentColor"/></symbol>
+</defs></svg>
+
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand-mark"><use href="#i-disc"/></svg>
+    <span class="brand-name">Musica</span>
+    <span class="brand-tag">music to your drive</span>
+  </div>
+  <nav class="modes" aria-label="Mode">
+    <a href="/" id="modeYt" class="active" aria-current="page"><svg><use href="#i-play"/></svg><span>YouTube</span></a>
+    <a href="/spotify" id="modeSp"><svg><use href="#i-disc"/></svg><span>Spotify</span></a>
+  </nav>
+  <div class="topbar-right">
+    <span class="conn" id="conn" title="Live progress connection">
+      <i class="conn-dot"></i><span id="connLabel">connecting</span>
+    </span>
+    <button class="ghost" id="settingsBtn" aria-label="Settings">
+      <svg><use href="#i-gear"/></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+  <!-- ── intake ─────────────────────────────────────────────────────────── -->
+  <section class="hero">
+    <h1 id="heroTitle">Any song. <em>Straight to your drive.</em></h1>
+    <p id="heroSub">Paste a YouTube link or playlist, or just type a song name.</p>
+  </section>
+
+  <section class="intake">
+    <form id="queryForm" class="query" autocomplete="off">
+      <svg class="query-icon"><use href="#i-search"/></svg>
+      <input id="query" type="text" spellcheck="false" placeholder="Song name, video link or playlist link" aria-label="Song, playlist or search">
+      <button class="primary" id="findBtn" type="submit"><svg><use href="#i-search"/></svg><span>Find</span></button>
+    </form>
+
+    <div class="suggest" id="suggest">
+      <button type="button" data-fill="arijit singh tum hi ho">arijit singh · tum hi ho</button>
+      <button type="button" data-fill="https://www.youtube.com/playlist?list=">playlist link</button>
+      <button type="button" data-fill="lofi hip hop radio beats to relax study to">live radio</button>
+      <button type="button" data-fill="https://www.youtube.com/watch?v=">single video</button>
+    </div>
+
+    <div class="destination">
+      <div class="dest-main">
+        <label class="field-label" for="driveSelect">Save to</label>
+        <div class="dest-row">
+          <span class="drive-icon"><svg><use href="#i-drive"/></svg></span>
+          <select id="driveSelect" aria-label="Destination drive"></select>
+          <button type="button" class="quiet" id="browseBtn" title="Choose another folder">
+            <svg><use href="#i-folder"/></svg><span>Browse…</span>
+          </button>
+          <button type="button" class="quiet icon-only" id="refreshDrives" title="Re-scan for removable drives">
+            <svg><use href="#i-refresh"/></svg>
+          </button>
+          <button type="button" class="quiet danger" id="formatBtn" title="Erase this drive and format it for the car" hidden>
+            <svg><use href="#i-bolt"/></svg><span>Format for car</span>
+          </button>
+        </div>
+        <p class="dest-path" id="destPath">—</p>
+      </div>
+
+      <div class="dest-side">
+        <div class="side-field">
+          <label class="field-label" for="formatSelect">Format</label>
+          <select id="formatSelect">
+            <option value="mp3">MP3</option>
+            <option value="m4a">M4A</option>
+            <option value="opus">Opus</option>
+            <option value="flac">FLAC</option>
+            <option value="wav">WAV</option>
+          </select>
+        </div>
+        <div class="side-field">
+          <label class="field-label" for="qualitySelect">Quality</label>
+          <select id="qualitySelect">
+            <option value="320">320 kbps</option>
+            <option value="256">256 kbps</option>
+            <option value="192">192 kbps</option>
+            <option value="128">128 kbps</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── preview ────────────────────────────────────────────────────────── -->
+  <section class="panel" id="previewPanel" hidden>
+    <header class="panel-head">
+      <div class="panel-title">
+        <h2 id="previewTitle">Results</h2>
+        <p id="previewMeta"></p>
+      </div>
+      <div class="panel-tools">
+        <button class="quiet" id="selectAllBtn">Select all</button>
+        <button class="quiet" id="selectNoneBtn">Select none</button>
+        <label class="switch"><input type="checkbox" id="hideOwned"><span></span><em>Hide what I already have</em></label>
+      </div>
+    </header>
+    <ul class="tracks" id="previewList"></ul>
+    <footer class="panel-foot">
+      <p class="foot-note" id="skipNote"></p>
+      <button class="primary big" id="downloadBtn" disabled>
+        <svg><use href="#i-download"/></svg><span>Download</span>
+      </button>
+    </footer>
+  </section>
+
+  <!-- ── queue ──────────────────────────────────────────────────────────── -->
+  <section class="panel" id="queuePanel" hidden>
+    <div class="status-card">
+      <div class="status-top">
+        <div class="status-main">
+          <span class="status-orb" id="queueOrb"><svg><use href="#i-disc"/></svg></span>
+          <div>
+            <h2 id="queueHeadline">Download queue</h2>
+            <p id="queueMeta"></p>
+          </div>
+        </div>
+        <div class="status-pct" id="queuePct">0<small>%</small></div>
+      </div>
+      <div class="overall" id="overall"><i id="overallBar"></i></div>
+      <div class="status-top">
+        <div class="chips" id="queueChips"></div>
+        <div class="status-tools">
+          <button class="quiet" id="pauseBtn"><svg><use href="#i-pause"/></svg><span>Pause</span></button>
+          <button class="quiet" id="cancelBtn"><svg><use href="#i-stop"/></svg><span>Cancel</span></button>
+          <button class="quiet" id="clearBtn">Clear finished</button>
+        </div>
+      </div>
+    </div>
+    <ul class="tracks" id="queueList"></ul>
+    <details class="logbox" id="logbox">
+      <summary>Activity log</summary>
+      <ul id="logList"></ul>
+    </details>
+  </section>
+
+  <section class="empty" id="emptyState">
+    <div class="steps">
+      <div class="step"><b>1</b><h3>Find</h3><p>Paste a link or type a song. Musica lists the tracks first and touches nothing yet.</p></div>
+      <div class="step"><b>2</b><h3>Pick</h3><p>Tick what you want. Songs already on the drive are marked and skipped.</p></div>
+      <div class="step"><b>3</b><h3>Download</h3><p>Watch each track save to your pendrive, live, with speed and time left.</p></div>
+    </div>
+    <div class="empty-versions" id="versions"></div>
+  </section>
+</main>
+
+<!-- ── settings drawer ──────────────────────────────────────────────────── -->
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="settingsDrawer" hidden aria-label="Settings">
+  <header>
+    <h2>Settings</h2>
+    <button class="quiet icon-only" id="settingsClose" aria-label="Close"><svg><use href="#i-close"/></svg></button>
+  </header>
+  <div class="drawer-body">
+    <fieldset>
+      <legend>Output</legend>
+      <label class="row"><span>File naming</span>
+        <select id="setNaming">
+          <option value="artist_title">Artist — Title</option>
+          <option value="title">Title only</option>
+        </select>
+      </label>
+      <label class="row"><span>Playlist subfolders</span>
+        <input type="checkbox" id="setSubfolders" class="tick"></label>
+      <label class="row"><span>Search returns</span>
+        <select id="setSearchResults">
+          <option value="5">5 results</option>
+          <option value="10">10 results</option>
+          <option value="20">20 results</option>
+          <option value="30">30 results</option>
+        </select>
+      </label>
+      <label class="row"><span>Parallel downloads</span>
+        <select id="setConcurrency">
+          <option value="1">1 — gentlest on the drive</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Duplicates</legend>
+      <label class="row"><span>Skip by video ID<em>Keeps .musica_archive.txt so any PC remembers</em></span>
+        <input type="checkbox" id="setArchiveOnDrive" class="tick"></label>
+      <label class="row"><span>Skip by song name<em>Catches the same track under a different upload</em></span>
+        <input type="checkbox" id="setSkipName" class="tick"></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Car stereo</legend>
+      <label class="row"><span>Tag for head units<em>ID3v2.3 + year + ID3v1 tail, small cover art, folder.jpg</em></span>
+        <input type="checkbox" id="setCarMode" class="tick"></label>
+      <label class="row"><span>Number the tracks<em>“01 - Artist - Song”, so a playlist plays in order</em></span>
+        <input type="checkbox" id="setNumberFiles" class="tick"></label>
+      <label class="row"><span>Genre for the car<em>YouTube does not tell us one</em><input type="text" id="setCarGenre" placeholder="Music" spellcheck="false"></span></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Drive care</legend>
+      <label class="row"><span>Build locally, then copy<em>Faster on USB sticks; one clean write instead of thousands</em></span>
+        <input type="checkbox" id="setStage" class="tick"></label>
+      <label class="row"><span>cookies.txt (optional)<input type="text" id="setCookiefile" placeholder="/path/to/cookies.txt" spellcheck="false"></span></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Health</legend>
+      <div class="stack" id="healthList"></div>
+    </fieldset>
+  </div>
+</aside>
+
+<!-- ── folder browser ───────────────────────────────────────────────────── -->
+<div class="modal-wrap" id="browserModal" hidden>
+  <div class="modal" role="dialog" aria-label="Choose a folder">
+    <header>
+      <h2>Choose a folder</h2>
+      <button class="quiet icon-only" id="browserClose" aria-label="Close"><svg><use href="#i-close"/></svg></button>
+    </header>
+    <div class="crumbs">
+      <button class="quiet" id="browserUp">↑ Up</button>
+      <code id="browserPath"></code>
+    </div>
+    <ul class="browser-list" id="browserList"></ul>
+    <footer>
+      <button class="quiet" id="browserCancel">Cancel</button>
+      <button class="primary" id="browserPick">Choose this folder</button>
+    </footer>
+  </div>
+</div>
+
+<div class="modal-wrap" id="formatModal" hidden>
+  <div class="modal" role="dialog" aria-label="Format the drive for the car">
+    <header>
+      <h2>Format for the car</h2>
+      <button class="quiet icon-only" id="formatClose" aria-label="Close"><svg><use href="#i-close"/></svg></button>
+    </header>
+    <p class="warn-line" id="formatWarning">This erases every file on the drive.</p>
+    <label class="row"><span>File system<em>FAT32 is read by the oldest head units; exFAT takes files over 4 GB</em></span>
+      <select id="formatType">
+        <option value="fat32">FAT32 (safest for cars)</option>
+        <option value="exfat">exFAT</option>
+      </select>
+    </label>
+    <label class="row"><span>Drive name<input type="text" id="formatLabel" maxlength="11" placeholder="MUSICA" spellcheck="false"></span></label>
+    <p class="fineprint">Command: <code id="formatCommand">—</code></p>
+    <label class="row"><span>Type <b>FORMAT</b> to confirm<input type="text" id="formatConfirm" autocomplete="off" spellcheck="false" placeholder="FORMAT"></span></label>
+    <footer>
+      <button class="quiet" id="formatCancel">Cancel</button>
+      <button class="primary danger" id="formatGo" disabled>Erase and format</button>
+    </footer>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+</body>
+</html>
