@@ -27,21 +27,21 @@ export function FormatDialog({
   onOpenChange: (open: boolean) => void;
   onDone: () => void;
 }) {
+  return (
+    <Dialog open={Boolean(drive)} onOpenChange={onOpenChange}>
+      {drive && <FormatForm key={drive.path} drive={drive} onClose={() => onOpenChange(false)} onDone={onDone} />}
+    </Dialog>
+  );
+}
+
+function FormatForm({ drive, onClose, onDone }: { drive: Drive; onClose: () => void; onDone: () => void }) {
   const [fstype, setFstype] = useState("fat32");
-  const [label, setLabel] = useState("MUSIC");
+  const [label, setLabel] = useState((drive.label || "MUSIC").toUpperCase().slice(0, 11));
   const [confirm, setConfirm] = useState("");
   const [plan, setPlan] = useState<{ command: string; warning: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (drive) {
-      setConfirm("");
-      setLabel((drive.label || "MUSIC").toUpperCase().slice(0, 11));
-    }
-  }, [drive]);
-
-  useEffect(() => {
-    if (!drive) return;
     let stale = false;
     post<{ command: string; warning: string }>("/api/drives/plan", { path: drive.path, fstype, label })
       .then((result) => !stale && setPlan(result))
@@ -52,13 +52,12 @@ export function FormatDialog({
   }, [drive, fstype, label]);
 
   async function run() {
-    if (!drive) return;
     setBusy(true);
     try {
       await post("/api/drives/format", { path: drive.path, fstype, label, confirm });
       toast.success(`${label} is formatted and ready`);
       onDone();
-      onOpenChange(false);
+      onClose();
     } catch (exc) {
       toast.error((exc as Error).message);
     } finally {
@@ -67,13 +66,12 @@ export function FormatDialog({
   }
 
   return (
-    <Dialog open={Boolean(drive)} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Format for the car</DialogTitle>
           <DialogDescription>
-            Erases everything on <span className="font-medium text-foreground">{drive?.label || drive?.path}</span> (
-            {drive?.total_human}, now {drive?.fstype}).
+            Erases everything on <span className="font-medium text-foreground">{drive.label || drive.path}</span> (
+            {drive.total_human}, now {drive.fstype}).
           </DialogDescription>
         </DialogHeader>
 
@@ -120,7 +118,7 @@ export function FormatDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
           <Button variant="destructive" disabled={confirm !== "FORMAT" || busy || !plan?.command} onClick={run}>
@@ -129,6 +127,5 @@ export function FormatDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
-    </Dialog>
   );
 }
