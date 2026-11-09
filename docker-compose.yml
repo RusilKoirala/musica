@@ -1,4 +1,9 @@
 services:
+  # Makes YouTube treat the server like a real browser (avoids "confirm you're not a bot").
+  pot:
+    image: brainicism/bgutil-ytdlp-pot-provider:2.0.2
+    restart: unless-stopped
+
   api:
     build:
       context: .
@@ -8,6 +13,9 @@ services:
       MUSICA_PASSWORD: ${MUSICA_PASSWORD:-}
       MUSICA_DEMO: ${MUSICA_DEMO:-0}
       MUSICA_DEMO_LIMIT: ${MUSICA_DEMO_LIMIT:-5}
+      MUSICA_POT_URL: http://pot:4416
+    depends_on:
+      - pot
     volumes:
       - ${MUSIC_DIR:-./music}:/music
       - ${DATA_DIR:-./data}:/data

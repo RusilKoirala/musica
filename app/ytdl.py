@@ -78,6 +78,10 @@ def _base_opts() -> dict[str, Any]:
     if runtime:
         opts["js_runtimes"] = {runtime: {}}
     opts["extractor_args"] = {"youtube": {"player_client": YOUTUBE_CLIENTS}}
+    pot_url = os.environ.get("MUSICA_POT_URL", "").strip()
+    if pot_url:
+        opts["extractor_args"]["youtube"]["player_client"] = ["default", "mweb"]
+        opts["extractor_args"]["youtubepot-bgutilhttp"] = {"base_url": [pot_url]}
     return opts
 
 

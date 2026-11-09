@@ -22,6 +22,9 @@ RUN uv venv --seed /opt/venv \
  && uv export --frozen --no-dev --no-emit-project -o /tmp/requirements.txt \
  && uv pip install --no-cache -r /tmp/requirements.txt
 
+# Lets yt-dlp fetch PO tokens from the pot container, which servers need for YouTube.
+RUN uv pip install --no-cache bgutil-ytdlp-pot-provider==2.0.2
+
 # Spotify links. Set --build-arg SPOTIFY=0 to leave it out.
 ARG SPOTIFY=1
 RUN if [ "$SPOTIFY" = "1" ]; then \
