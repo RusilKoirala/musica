@@ -17,3 +17,8 @@ Thumbs.db
 
 # Local tool state
 .claude/
+
+# Docker
+.env
+music/
+data/

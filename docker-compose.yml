@@ -1,0 +1,22 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    restart: unless-stopped
+    environment:
+      MUSICA_PASSWORD: ${MUSICA_PASSWORD:-}
+    volumes:
+      - ${MUSIC_DIR:-./music}:/music
+      - ${DATA_DIR:-./data}:/data
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${PORT:-8080}:80"
