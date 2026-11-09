@@ -1,14 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FolderIcon, Loader2Icon, SettingsIcon, TriangleAlertIcon } from "lucide-react";
+import { FolderIcon, Loader2Icon, SettingsIcon, SparklesIcon, TriangleAlertIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DestinationBar } from "@/components/musica/destination-bar";
 import { FolderDialog } from "@/components/musica/folder-dialog";
 import { FormatDialog } from "@/components/musica/format-dialog";
+import { LibraryPanel } from "@/components/musica/library-panel";
 import { Login } from "@/components/musica/login";
+import { PlayerProvider } from "@/components/musica/player";
 import { Logo } from "@/components/musica/logo";
 import { QueuePanel } from "@/components/musica/queue-panel";
 import { isOwned, Results, ResultsSkeleton } from "@/components/musica/results";
@@ -53,7 +55,8 @@ export default function Home() {
     if (!result) return;
     if (!result.auth) return setAuth("in");
     try {
-      const me = await api<{ role: "admin" | "demo" }>("/api/me");
+      const me = await api<{ role: "admin" | "demo" | null }>("/api/me");
+      if (!me.role) return setAuth("out");
       setRole(me.role);
       setAuth("in");
     } catch (exc) {
@@ -272,7 +275,8 @@ function App({
   ].filter(Boolean) as string[];
 
   return (
-    <div className="min-h-svh">
+    <PlayerProvider>
+    <div className="min-h-svh pb-20">
       <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
           <Logo />
@@ -304,6 +308,17 @@ function App({
               Search a name or paste a YouTube or Spotify link. Files arrive named, tagged and with cover art.
             </p>
           </div>
+
+          {demo && (
+            <Alert>
+              <SparklesIcon />
+              <AlertTitle>Welcome to the demo</AlertTitle>
+              <AlertDescription>
+                Search a song or paste a YouTube link, tick up to {demoLimit} and press Download. Finished songs play right
+                here and can be saved to your device. Songs already on the server are in the Library.
+              </AlertDescription>
+            </Alert>
+          )}
 
           {warnings.map((warning) => (
             <Alert key={warning} variant="destructive">
@@ -342,7 +357,10 @@ function App({
         </div>
 
         <aside className="lg:sticky lg:top-20 lg:self-start">
-          <QueuePanel queue={queue} logs={logs} connected={connected} />
+          <div className="space-y-4">
+            <QueuePanel queue={queue} logs={logs} connected={connected} />
+            <LibraryPanel refreshKey={queue?.counts.done ?? 0} />
+          </div>
         </aside>
       </main>
 
@@ -359,5 +377,6 @@ function App({
       <FolderDialog open={browseOpen} onOpenChange={setBrowseOpen} start={destination} onPick={changeDestination} />
       <FormatDialog drive={formatting} onOpenChange={(open) => !open && setFormatting(null)} onDone={loadDrives} />
     </div>
+    </PlayerProvider>
   );
 }

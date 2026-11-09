@@ -54,7 +54,7 @@ if hosting.cors_origins():
         allow_headers=["*"],
     )
 
-_OPEN_PATHS = {"/api/health", "/api/login", "/api/logout"}
+_OPEN_PATHS = {"/api/health", "/api/login", "/api/logout", "/api/me"}
 
 
 _ADMIN_ONLY = {
@@ -148,8 +148,8 @@ def health() -> dict[str, Any]:
 
 @app.get("/api/me")
 def me(request: Request) -> dict[str, Any]:
-    role = getattr(request.state, "role", None) or "admin"
-    return {"ok": True, "role": role, "demo_limit": hosting.demo_limit() if role == "demo" else None}
+    role = getattr(request.state, "role", None)
+    return {"ok": role is not None, "role": role, "demo_limit": hosting.demo_limit() if role == "demo" else None}
 
 
 @app.post("/api/login")

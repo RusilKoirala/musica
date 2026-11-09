@@ -6,7 +6,6 @@ import {
   ChevronDownIcon,
   CircleDashedIcon,
   CircleSlashIcon,
-  DownloadIcon,
   InboxIcon,
   Loader2Icon,
   PauseIcon,
@@ -19,13 +18,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { fileUrl, post, type Job, type LogEntry, type QueueState, type Track } from "@/lib/api";
+import { post, type Job, type LogEntry, type QueueState, type Track } from "@/lib/api";
 import { bytes, clock, plural, speed } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { PlayButton, SaveButton } from "./player";
 import { Cover } from "./results";
 
 async function act(path: string, body: unknown, message?: string) {
@@ -86,22 +85,11 @@ function TrackRow({ track }: { track: Track }) {
       {track.status === "running" && (
         <span className="tabular relative text-xs text-muted-foreground">{Math.round(track.percent)}%</span>
       )}
-      {track.status === "done" && track.path && (
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <a
-                href={fileUrl(track.path)}
-                download
-                aria-label="Save to this device"
-                className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }), "relative")}
-              />
-            }
-          >
-            <DownloadIcon />
-          </TooltipTrigger>
-          <TooltipContent>Save to this device</TooltipContent>
-        </Tooltip>
+      {(track.status === "done" || track.status === "skipped") && track.path && (
+        <>
+          <PlayButton song={{ path: track.path, title: track.title }} />
+          <SaveButton path={track.path} />
+        </>
       )}
       {(track.status === "error" || track.status === "cancelled") && (
         <Button

@@ -175,7 +175,8 @@ def output_stem(item: dict[str, Any], settings: dict[str, Any]) -> str:
     naming = settings.get("naming", "artist_title")
     if settings.get("car_mode", True):
         title = strip_noise(title) or title
-    if naming == "artist_title" and artist and artist.lower() != title.lower():
+    named = " - " in title or artist.lower() in title.lower()
+    if naming == "artist_title" and artist and not named:
         title = f"{artist} - {title}"
     stem = sanitize(title, fallback="track", max_length=120, max_bytes=170)
     index = item.get("playlist_index")

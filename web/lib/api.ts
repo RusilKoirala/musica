@@ -173,4 +173,7 @@ export type FolderListing = {
   error: string | null;
 };
 
+export type LibrarySong = { name: string; path: string; folder: string; size: number; modified: number };
+export type LibraryResponse = { root: string; count: number; songs: LibrarySong[] };
+
 export const itemKey = (item: Item) => item.url || item.id;
