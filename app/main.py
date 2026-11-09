@@ -60,17 +60,25 @@ if hosting.cors_origins():
 _OPEN_PATHS = {"/api/health", "/api/login", "/api/logout"}
 
 
+# What a demo visitor may not do: anything that changes the server for everyone.
+_ADMIN_ONLY = {
+    ("PUT", "/api/settings"),
+    ("POST", "/api/selfupdate"),
+    ("POST", "/api/drives/plan"),
+    ("POST", "/api/drives/format"),
+}
+
+
 @app.middleware("http")
 async def require_login(request: Request, call_next):
     path = request.url.path
-    if (
-        hosting.auth_enabled()
-        and path.startswith("/api/")
-        and path not in _OPEN_PATHS
-        and request.method != "OPTIONS"
-        and not hosting.check_token(request.cookies.get(hosting.COOKIE_NAME))
-    ):
+    role = hosting.role_for(request.cookies.get(hosting.COOKIE_NAME))
+    request.state.role = role
+    guarded = path.startswith("/api/") and path not in _OPEN_PATHS and request.method != "OPTIONS"
+    if guarded and role is None:
         return JSONResponse({"detail": "Sign in first."}, status_code=401)
+    if guarded and role == "demo" and (request.method, path) in _ADMIN_ONLY:
+        return JSONResponse({"detail": "That is turned off in the demo."}, status_code=403)
     return await call_next(request)
 
 
@@ -111,6 +119,7 @@ class BrowseRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     password: str = ""
+    demo: bool = False
 
 
 class FormatRequest(BaseModel):
@@ -142,28 +151,37 @@ def health() -> dict[str, Any]:
         "js_runtime": ytdl.js_runtime(),
         "python": sys.version.split()[0],
         "auth": hosting.auth_enabled(),
+        "demo": hosting.demo_enabled(),
+        "demo_limit": hosting.demo_limit(),
         "can_format": hosting.allow_format(),
         "root": str(hosting.root()) if hosting.root() else None,
     }
 
 
 @app.get("/api/me")
-def me() -> dict[str, Any]:
+def me(request: Request) -> dict[str, Any]:
     # The middleware already rejected anyone without a session.
-    return {"ok": True}
+    role = getattr(request.state, "role", None) or "admin"
+    return {"ok": True, "role": role, "demo_limit": hosting.demo_limit() if role == "demo" else None}
 
 
 @app.post("/api/login")
 def login(body: LoginRequest, request: Request) -> JSONResponse:
     if not hosting.auth_enabled():
         return JSONResponse({"ok": True})
-    if not hosting.check_password(body.password):
+    if body.demo:
+        if not hosting.demo_enabled():
+            raise HTTPException(403, "The demo is turned off on this server.")
+        token = hosting.demo_token()
+    elif hosting.check_password(body.password):
+        token = hosting.session_token()
+    else:
         time.sleep(0.6)  # makes guessing slow
         raise HTTPException(401, "Wrong password.")
     response = JSONResponse({"ok": True})
     response.set_cookie(
         hosting.COOKIE_NAME,
-        hosting.session_token(),
+        token,
         max_age=60 * 60 * 24 * 30,
         httponly=True,
         samesite="lax",
@@ -316,7 +334,9 @@ def resolve(body: ResolveRequest) -> dict[str, Any]:
 # ------------------------------------------------------------------------ queue
 
 @app.post("/api/download")
-def download(body: DownloadRequest) -> dict[str, Any]:
+def download(body: DownloadRequest, request: Request) -> dict[str, Any]:
+    if getattr(request.state, "role", None) == "demo" and len(body.items) > hosting.demo_limit():
+        raise HTTPException(403, f"The demo downloads up to {hosting.demo_limit()} songs at a time.")
     settings = config.load()
     settings.update({k: v for k, v in (body.settings or {}).items() if k in config.DEFAULTS})
     try:

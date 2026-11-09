@@ -42,6 +42,40 @@ def check_token(token: str | None) -> bool:
     return bool(token) and hmac.compare_digest(token or "", session_token())
 
 
+# ------------------------------------------------------------------ demo access
+# MUSICA_DEMO=1 adds a "Try the demo" button to the login page. Demo visitors can
+# search and download, but only a few songs at a time, and cannot change settings,
+# update yt-dlp or touch drives.
+
+def demo_enabled() -> bool:
+    flag = os.environ.get("MUSICA_DEMO", "").strip().lower() in ("1", "true", "yes", "on")
+    return auth_enabled() and flag
+
+
+def demo_limit() -> int:
+    try:
+        return max(1, int(os.environ.get("MUSICA_DEMO_LIMIT", "5")))
+    except ValueError:
+        return 5
+
+
+def demo_token() -> str:
+    return hmac.new(password().encode(), b"musica-demo-v1", hashlib.sha256).hexdigest()
+
+
+def role_for(token: str | None) -> str | None:
+    """"admin", "demo", or None when the cookie is missing or wrong."""
+    if not auth_enabled():
+        return "admin"
+    if not token:
+        return None
+    if hmac.compare_digest(token, session_token()):
+        return "admin"
+    if demo_enabled() and hmac.compare_digest(token, demo_token()):
+        return "demo"
+    return None
+
+
 def root() -> Path | None:
     value = os.environ.get("MUSICA_ROOT", "").strip()
     return Path(value).expanduser().resolve() if value else None
