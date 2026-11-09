@@ -1,17 +1,12 @@
-/* Musica frontend. No framework, no build: one state object, one render per panel,
-   and a single EventSource that replaces the queue snapshot whenever the backend moves. */
-
-'use strict';
-
 const state = {
   settings: null,
   drives: [],
   driveInfo: null,
   health: null,
-  preview: null,          // {items, playlist_title, is_playlist, destination, ...}
-  selected: new Set(),    // item ids chosen in the preview
+  preview: null,
+  selected: new Set(),
   hideOwned: false,
-  queue: null,            // snapshot from /api/events
+  queue: null,
   logs: [],
   destination: '',
   browserPath: null,
@@ -19,8 +14,6 @@ const state = {
 
 const els = {};
 let events = null;
-
-/* ── tiny helpers ─────────────────────────────────────────────────────── */
 
 const $ = (id) => document.getElementById(id);
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => (
@@ -79,10 +72,6 @@ function toast(message, kind = '') {
   node.addEventListener('click', () => node.remove());
 }
 
-/* ── mode ─────────────────────────────────────────────────────────────── */
-
-// /spotify is this same page. Only the copy and accent change: the backend recognises a
-// Spotify link in /api/resolve, so every control below works the same in both modes.
 const SPOTIFY_MODE = location.pathname.startsWith('/spotify');
 
 function applySpotifyMode() {
@@ -101,8 +90,6 @@ function applySpotifyMode() {
     <button type="button" data-fill="https://open.spotify.com/album/4aawyAB9vmqN3uQ7FjRGTy">an album</button>
     <button type="button" data-fill="https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp">a single song</button>`;
 }
-
-/* ── boot ─────────────────────────────────────────────────────────────── */
 
 async function boot() {
   [
@@ -142,8 +129,6 @@ async function boot() {
   listenEvents();
 }
 
-/* ── live connection ──────────────────────────────────────────────────── */
-
 function listenEvents() {
   events = new EventSource('/api/events');
 
@@ -172,8 +157,6 @@ function listenEvents() {
   });
 }
 
-/* ── drives and destination ───────────────────────────────────────────── */
-
 async function refreshDrives() {
   try {
     const info = await request('/api/drives');
@@ -182,8 +165,7 @@ async function refreshDrives() {
     if (!state.destination) {
       state.destination = state.settings?.destination || info.fallback;
     }
-    // The remembered drive was unplugged or renamed (e.g. reformatted as MUSICA):
-    // move to a drive that is actually here rather than fail at download time.
+
     const onDrive = (path) => state.drives.some((drive) => path === drive.path || path.startsWith(`${drive.path}/`));
     const gone = /^(\/Volumes|\/media|\/run\/media|\/mnt)\//.test(state.destination) && !onDrive(state.destination);
     if (gone) {
@@ -219,7 +201,6 @@ function renderDestination() {
     select.append(option);
   });
 
-  // A remembered folder that is not a detected drive still has to be selectable.
   if (state.destination && !isKnownDestination(state.destination)) {
     select.append(new Option(`Custom folder  ·  ${state.destination}`, state.destination));
   }
@@ -232,7 +213,7 @@ function renderDestination() {
 
   const chosen = select.value || state.destination;
   const drive = state.drives.find((item) => item.path === chosen);
-  // Erasing a disk is only ever offered for a real removable stick, never a folder.
+
   els.formatBtn.hidden = !(drive && ['removable', 'external'].includes(drive.kind));
   els.formatBtn.dataset.device = drive ? drive.device || '' : '';
   const parts = [];
@@ -240,7 +221,7 @@ function renderDestination() {
     parts.push(`<span class="free">${esc(drive.path)}</span>`);
     parts.push(`${bytes(drive.free)} free of ${bytes(drive.total)}`);
     if (drive.fstype) parts.push(drive.fstype.toUpperCase());
-    // Most head units will only mount a FAT-based stick; NTFS/ext4 silently shows up empty.
+
     if (state.settings?.car_mode && drive.fstype && !['fat32', 'vfat', 'msdos', 'exfat'].includes(drive.fstype)) {
       parts.push('<span class="missing">car players usually cannot read this format — reformat the stick to FAT32 or exFAT</span>');
     }
@@ -254,8 +235,6 @@ function renderDestination() {
   state.destination = chosen;
 }
 
-/* ── resolve ──────────────────────────────────────────────────────────── */
-
 async function find(rawQuery) {
   const query = rawQuery.trim();
   if (!query) return;
@@ -266,7 +245,7 @@ async function find(rawQuery) {
   try {
     const result = await request('/api/resolve', { method: 'POST', body: JSON.stringify({ query }) });
     state.preview = result;
-    // Default to everything we do not already own.
+
     state.selected = new Set(
       result.items.filter((item) => !item.in_archive && !item.name_duplicate).map((item) => item.url || item.id),
     );
@@ -348,7 +327,7 @@ function renderPreview() {
 
   const selected = items.filter((item) => state.selected.has(itemKey(item)));
   const fresh = selected.filter((item) => !ownedReason(item));
-  // Picking only owned tracks means "put it there again" - a deliberate force re-download.
+
   state.forceBatch = selected.length > 0 && fresh.length === 0;
 
   els.downloadBtn.querySelector('span').textContent = fresh.length
@@ -364,8 +343,6 @@ function renderPreview() {
           : ' · anything already on the drive is skipped automatically')
     : 'Select at least one track.';
 }
-
-/* ── download ─────────────────────────────────────────────────────────── */
 
 async function download() {
   if (!state.settings) { toast('Still loading settings - give it a moment.', 'bad'); return; }
@@ -408,8 +385,6 @@ async function download() {
     els.downloadBtn.disabled = false;
   }
 }
-
-/* ── queue rendering ──────────────────────────────────────────────────── */
 
 const STAGE_LABEL = {
   Connecting: 'Connecting',
@@ -487,7 +462,6 @@ function shortSkip(track) {
   return { 'already-downloaded': 'Already on drive', 'same-song': 'Same song on drive', 'already-queued': 'Already queued', 'duplicate-in-selection': 'Listed twice' }[reason] || reason;
 }
 
-// One sentence that says what the queue is doing right now, plus how it should look.
 function queueHeadline(snapshot, counts, processed, total) {
   const running = counts.running || 0;
   const pending = counts.pending || 0;
@@ -588,8 +562,6 @@ function renderLogs() {
   `).join('');
 }
 
-/* ── settings ─────────────────────────────────────────────────────────── */
-
 function applySettingsToForm() {
   const settings = state.settings;
   if (!settings) return;
@@ -634,8 +606,6 @@ async function saveSettings(patch) {
     toast(error.message, 'bad');
   }
 }
-
-/* ── format the stick for the car ─────────────────────────────────────── */
 
 async function openFormat() {
   const path = state.destination;
@@ -712,8 +682,6 @@ function renderHealth() {
   `).join('');
 }
 
-/* ── folder browser ───────────────────────────────────────────────────── */
-
 async function openBrowser(path) {
   els.browserModal.hidden = false;
   els.scrim.hidden = false;
@@ -740,8 +708,6 @@ function closeBrowser() {
   els.browserModal.hidden = true;
   if (els.settingsDrawer.hidden) els.scrim.hidden = true;
 }
-
-/* ── wiring ───────────────────────────────────────────────────────────── */
 
 function bindUi() {
   els.queryForm.addEventListener('submit', (event) => {
@@ -806,7 +772,7 @@ function bindUi() {
     if (box.checked) state.selected.add(key); else state.selected.delete(key);
     renderPreview();
   });
-  // The whole row is the hit target, not just the 20px checkbox.
+
   els.previewList.addEventListener('click', (event) => {
     if (event.target.closest('.pick')) return;
     const box = event.target.closest('.track')?.querySelector('.pick');
@@ -879,8 +845,6 @@ function openDrawer(open) {
   els.scrim.hidden = !open && els.browserModal.hidden;
 }
 
-// Changing the destination changes who is "already owned". Ask the backend again and
-// copy only the ownership flags across, so the user's checkboxes survive.
 async function refreshOwnership() {
   if (!state.preview) return;
   const handle = state.preview.query || state.preview.url;
@@ -901,7 +865,7 @@ async function refreshOwnership() {
     state.preview.scanned_files = result.scanned_files;
     renderPreview();
   } catch {
-    // The server still applies both skip rules at download time, so this is cosmetic.
+
   }
 }
 

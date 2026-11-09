@@ -1,5 +1,3 @@
-/* Musica — warm dark, one accent per mode, one column of panels: the app has one job. */
-
 :root {
   --ink-0: #0b0a09;
   --ink-1: #141210;
@@ -31,7 +29,6 @@
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
-/* Spotify mode swaps the accent; every component reads the tokens. */
 body.mode-spotify {
   --accent: #1ed760;
   --accent-hover: #3be477;
@@ -63,7 +60,6 @@ svg { width: 18px; height: 18px; display: block; flex: none; }
 ::selection { background: var(--accent); color: var(--accent-ink); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* ── top bar ───────────────────────────────────────────────────────────── */
 .topbar {
   position: sticky; top: 0; z-index: 40;
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px;
@@ -116,7 +112,6 @@ svg { width: 18px; height: 18px; display: block; flex: none; }
   .brand-tag, .hide-sm { display: none; }
 }
 
-/* ── buttons ───────────────────────────────────────────────────────────── */
 .primary, .quiet, .ghost, .icon-only {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   border-radius: var(--radius-sm); border: 1px solid transparent;
@@ -149,7 +144,6 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .primary.danger { background: var(--bad); color: #160909; }
 .primary.danger:hover:not(:disabled) { background: #ff8f86; }
 
-/* ── hero + intake ─────────────────────────────────────────────────────── */
 main { max-width: 980px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 36px) 90px; }
 
 .hero { text-align: center; padding: 52px 0 26px; }
@@ -223,7 +217,6 @@ input[type="text"] {
   font-family: var(--mono); font-size: 12.5px;
 }
 
-/* ── panels ────────────────────────────────────────────────────────────── */
 .panel {
   background: var(--ink-1); border: 1px solid var(--hair); border-radius: var(--radius);
   margin-bottom: 22px; overflow: hidden; box-shadow: var(--shadow);
@@ -259,7 +252,6 @@ input[type="text"] {
 .switch input:checked + span::after { transform: translateX(14px); background: var(--accent); }
 .switch em { font-style: normal; font-size: 13px; color: var(--muted); }
 
-/* ── status card (top of the queue) ────────────────────────────────────── */
 .status-card { padding: 20px; border-bottom: 1px solid var(--hair); }
 .status-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .status-main { display: flex; align-items: center; gap: 14px; min-width: 0; }
@@ -308,7 +300,6 @@ input[type="text"] {
 .chip.c-error { border-color: rgba(239, 106, 95, 0.35); }
 .status-tools { display: flex; gap: 8px; flex-wrap: wrap; }
 
-/* ── track rows ────────────────────────────────────────────────────────── */
 .tracks { list-style: none; margin: 0; padding: 0; max-height: 60vh; overflow-y: auto; }
 .tracks::-webkit-scrollbar { width: 10px; }
 .tracks::-webkit-scrollbar-thumb { background: var(--ink-3); border-radius: 10px; border: 3px solid var(--ink-1); }
@@ -340,7 +331,6 @@ input[type="text"] {
 }
 .pick:checked::after { opacity: 1; }
 
-/* status glyph at the start of a queue row */
 .st { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: var(--dim); background: var(--ink-2); }
 .st svg { width: 13px; height: 13px; }
 .st.done { color: var(--ok); background: var(--ok-soft); }
@@ -381,7 +371,6 @@ input[type="text"] {
 .right { display: flex; align-items: center; justify-content: flex-end; gap: 10px; text-align: right; min-width: 0; }
 .right-stack { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
 
-/* status pills */
 .badge {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 999px;
@@ -412,7 +401,6 @@ input[type="text"] {
 }
 .mini-link:hover { color: var(--text); border-color: var(--accent-line); }
 
-/* queue job grouping */
 .job-head {
   display: flex; align-items: center; justify-content: space-between; gap: 14px;
   padding: 10px 20px; background: var(--ink-2);
@@ -432,7 +420,6 @@ input[type="text"] {
 .job-status.cancelled, .job-status.cancelling { color: var(--bad); border-color: rgba(239, 106, 95, 0.4); }
 .job-head em { font-style: normal; font: 500 12px/1 var(--mono); color: var(--muted); flex: none; }
 
-/* activity log */
 .logbox { border-top: 1px solid var(--hair); background: var(--ink-2); }
 .logbox summary { padding: 11px 20px; font-size: 13px; color: var(--dim); cursor: pointer; list-style: none; }
 .logbox summary:hover { color: var(--muted); }
@@ -446,7 +433,6 @@ input[type="text"] {
 .logbox li.ok { color: var(--ok); }
 .logbox li.warn { color: var(--warn); }
 
-/* ── how-it-works / empty state ────────────────────────────────────────── */
 .empty { text-align: center; padding: 18px 0 40px; }
 .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; text-align: left; }
 @media (max-width: 720px) { .steps { grid-template-columns: 1fr; } }
@@ -464,7 +450,6 @@ input[type="text"] {
 .empty-versions span { border: 1px solid var(--hair); border-radius: 999px; padding: 5px 10px; color: var(--dim); }
 .empty-versions span.bad { color: var(--bad); border-color: rgba(239, 106, 95, 0.4); }
 
-/* ── spotify mode ──────────────────────────────────────────────────────── */
 .sp-card { display: flex; gap: 20px; align-items: center; padding: 22px 20px; }
 .sp-art {
   width: 128px; height: 128px; border-radius: 12px; flex: none; object-fit: cover;
@@ -496,7 +481,6 @@ input[type="text"] {
 .sp-log li.empty-line { display: block; text-align: center; color: var(--dim); padding: 22px; }
 pre.sp-output { margin: 0; padding: 0 20px 16px; font: 400 11.5px/1.6 var(--mono); color: var(--dim); white-space: pre-wrap; max-height: 260px; overflow-y: auto; }
 
-/* ── drawer + modals ───────────────────────────────────────────────────── */
 .scrim { position: fixed; inset: 0; background: rgba(5, 4, 3, 0.66); backdrop-filter: blur(2px); z-index: 50; animation: fade 0.2s ease-out; }
 .drawer {
   position: fixed; top: 0; right: 0; bottom: 0; width: min(430px, 92vw); z-index: 60;
@@ -558,7 +542,6 @@ legend { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-sp
 .browser-list svg { width: 15px; height: 15px; color: var(--accent); }
 .modal footer { display: flex; justify-content: flex-end; gap: 9px; padding: 13px 18px; border-top: 1px solid var(--hair); background: var(--ink-2); border-radius: 0 0 var(--radius) var(--radius); }
 
-/* ── toasts ────────────────────────────────────────────────────────────── */
 .toasts {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 90;
   display: flex; flex-direction: column; gap: 9px; align-items: center; pointer-events: none;
@@ -576,7 +559,6 @@ legend { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-sp
 .toast.good svg { color: var(--ok); }
 .toast p { white-space: pre-wrap; word-break: break-word; }
 
-/* ── motion ────────────────────────────────────────────────────────────── */
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
 @keyframes fade { from { opacity: 0; } }
 @keyframes slide { from { transform: translateX(24px); opacity: 0; } }
