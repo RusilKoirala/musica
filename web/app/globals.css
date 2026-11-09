@@ -128,3 +128,30 @@
     @apply font-sans;
   }
 }
+/* Musica: one warm accent on top of the neutral shadcn palette. */
+:root {
+  --brand: oklch(0.64 0.17 48);
+  --brand-foreground: oklch(0.99 0 0);
+  --success: oklch(0.6 0.14 155);
+}
+
+.dark {
+  --brand: oklch(0.76 0.15 60);
+  --brand-foreground: oklch(0.2 0.02 60);
+  --success: oklch(0.74 0.15 155);
+}
+
+@theme inline {
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-success: var(--success);
+}
+
+@layer base {
+  body {
+    font-feature-settings: "ss01", "cv11";
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
