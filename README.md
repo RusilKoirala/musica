@@ -23,7 +23,7 @@ It runs locally. There is no account, no database, and nothing is sent anywhere 
 
 Output formats are MP3 (128 to 320 kbps), M4A, Opus, OGG, FLAC and WAV. MP3 is the default since it plays everywhere.
 
-The Spotify side works the same way. Paste a playlist, album or song link and you get the same preview, destination picker and queue:
+The Spotify side works the same way. Open `/spotify` or just paste a playlist, album or song link into the search box, and you get the same preview, destination picker and queue:
 
 ![Musica in Spotify mode](images/spotify-mode.png)
 
