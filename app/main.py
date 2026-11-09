@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import json
 import os
 import sys
@@ -257,15 +258,22 @@ def browse(body: BrowseRequest) -> dict[str, Any]:
     return drives.browse(body.path, body.include_files)
 
 
+_RESOLVERS = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+RESOLVE_TIMEOUT = 25
+
+
 @app.post("/api/resolve")
 def resolve(body: ResolveRequest) -> dict[str, Any]:
     settings = config.load()
     limit = body.limit or int(settings.get("search_results", 10))
+    if spotify.is_spotify(body.query):
+        future = _RESOLVERS.submit(spotify.resolve, body.query)
+    else:
+        future = _RESOLVERS.submit(ytdl.resolve, body.query, limit, body.prefer_playlist)
     try:
-        if spotify.is_spotify(body.query):
-            result = spotify.resolve(body.query)
-        else:
-            result = ytdl.resolve(body.query, limit=limit, prefer_playlist=body.prefer_playlist)
+        result = future.result(timeout=RESOLVE_TIMEOUT)
+    except concurrent.futures.TimeoutError as exc:
+        raise HTTPException(504, "YouTube is taking too long to answer. Try again, or play a song from the Library.") from exc
     except ValueError:
         raise
     except Exception as exc:
@@ -275,8 +283,8 @@ def resolve(body: ResolveRequest) -> dict[str, Any]:
         hint = ""
         if "Private video" in detail:
             hint = "That video is private. Add a cookies file in Settings if you own it."
-        elif "Sign in to confirm" in detail:
-            hint = "YouTube is asking for sign-in. Settings -> cookies.txt (exported from your browser) fixes it."
+        elif "Sign in to confirm" in detail or "not a bot" in detail:
+            raise HTTPException(422, ytdl.BLOCKED_MESSAGE) from exc
         elif "not found" in detail.lower() or "HTTP Error 4" in detail:
             hint = "Check the link, or search the song name instead."
         raise HTTPException(422, f"{detail}{(' - ' + hint) if hint else ''}") from exc
@@ -349,12 +357,32 @@ def download_file(path: str) -> FileResponse:
         raise HTTPException(404, "Only downloaded songs can be fetched.")
     if not hosting.inside_root(target):
         raise HTTPException(403, "That file is outside the music folder.")
-    if hosting.root() is None and not any(
-        target.is_relative_to(Path(job["destination"]).expanduser().resolve())
-        for job in queue.state()["jobs"]
-    ):
+    settings = config.load()
+    library_base = Path((settings.get("destination") or "").strip() or drives.default_folder()).expanduser().resolve()
+    allowed = [library_base] + [Path(job["destination"]).expanduser().resolve() for job in queue.state()["jobs"]]
+    if hosting.root() is None and not any(target.is_relative_to(base) for base in allowed):
         raise HTTPException(403, "Only songs from the queue can be fetched.")
     return FileResponse(target, filename=target.name)
+
+
+@app.get("/api/library")
+def library_list() -> dict[str, Any]:
+    settings = config.load()
+    base = Path(hosting.root() or (settings.get("destination") or "").strip() or drives.default_folder())
+    songs: list[dict[str, Any]] = []
+    if base.is_dir():
+        for path in base.rglob("*"):
+            if path.suffix.lower() in AUDIO_EXTENSIONS and path.is_file() and not path.name.startswith("."):
+                stat = path.stat()
+                songs.append({
+                    "name": path.stem,
+                    "path": str(path),
+                    "folder": str(path.parent.relative_to(base)) if path.parent != base else "",
+                    "size": stat.st_size,
+                    "modified": stat.st_mtime,
+                })
+    songs.sort(key=lambda song: song["modified"], reverse=True)
+    return {"root": str(base), "count": len(songs), "songs": songs[:100]}
 
 
 @app.get("/api/queue")

@@ -186,10 +186,14 @@ class Queue:
             }
 
             if not force:
-                if track["id"] and track["id"].lower() in archive_ids and index.find_duplicate(
-                    track["title"], track["artist"], track["duration"]
-                ):
+                owned = (
+                    index.find_duplicate(track["title"], track["artist"], track["duration"])
+                    if track["id"] and track["id"].lower() in archive_ids
+                    else None
+                )
+                if owned:
                     track["status"] = SKIPPED
+                    track["path"] = owned["path"]
                     track["skip_reason"] = "already-downloaded"
                     track["stage"] = "In the drive's archive"
                 elif track["id"] and track["id"].lower() in already_queued:

@@ -412,6 +412,9 @@ def purge_staging(older_than_seconds: int = 3600) -> int:
     return removed
 
 
+BLOCKED_MESSAGE = "YouTube is blocking this server for a moment. Try again shortly, or play a song from the Library."
+
+
 def _explain_failure(message: str, detail: str = "") -> str:
     text = (message or "").strip()
     text = _ANSI_RE.sub("", text).strip()
@@ -421,7 +424,9 @@ def _explain_failure(message: str, detail: str = "") -> str:
     raw = f"{text} ({detail})" if detail and detail not in text else text
     low = f"{text} {detail}".lower()
     hint = ""
-    if "403" in low or "forbidden" in low or "not a bot" in low or "sign in to confirm" in low:
+    if "not a bot" in low or "sign in to confirm" in low:
+        return BLOCKED_MESSAGE
+    if "403" in low or "forbidden" in low:
         hint = " YouTube is throttling this machine; it usually clears in a few minutes, or sign in once via Settings."
     elif "age" in low and ("restrict" in low or "confirm" in low):
         hint = " This video is age-restricted and needs signed-in cookies (Settings → cookie file)."
@@ -431,6 +436,8 @@ def _explain_failure(message: str, detail: str = "") -> str:
         hint = " This looks like a connection problem; check the network and retry."
     elif "requested format is not available" in low:
         hint = " Try a different format/quality in Settings, or pick another result."
+    if len(raw) > 240:
+        raw = raw[:240].rstrip() + "…"
     return (raw + hint) if raw or hint else "The link could not be downloaded."
 
 
