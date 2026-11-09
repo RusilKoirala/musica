@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2Icon, SettingsIcon, TriangleAlertIcon } from "lucide-react";
+import { FolderIcon, Loader2Icon, SettingsIcon, TriangleAlertIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -254,7 +254,13 @@ function App({ health, onHealth, onSignOut }: { health: Health | null; onHealth:
           <Logo />
           <div className="ml-auto flex items-center gap-1">
             {health?.root && (
-              <span className="hidden font-mono text-xs text-muted-foreground md:block">{health.root}</span>
+              <span
+                title={health.root}
+                className="hidden items-center gap-1.5 rounded-md border px-2 py-1 text-xs text-muted-foreground md:flex"
+              >
+                <FolderIcon className="size-3.5" />
+                {health.root.split(/[\\/]/).filter(Boolean).pop() || health.root}
+              </span>
             )}
             <Button variant="ghost" size="icon" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
               <SettingsIcon />

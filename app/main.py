@@ -1,9 +1,4 @@
-"""FastAPI app: the small HTTP surface the browser page talks to.
 
-Routes are deliberately synchronous (``def``) wherever they touch yt-dlp or the disk, so
-Starlette runs them on its threadpool and the SSE stream keeps breathing while a playlist
-is being resolved.
-"""
 
 from __future__ import annotations
 
@@ -430,31 +425,3 @@ async def events() -> StreamingResponse:
         headers={"Cache-Control": "no-cache, must-revalidate", "X-Accel-Buffering": "no", "Connection": "keep-alive"},
     )
 
-
-# --------------------------------------------------------------------- frontend
-
-def _page() -> Path:
-    built = WEB_DIR / "index.html"
-    return built if built.is_file() else STATIC_DIR / "index.html"
-
-
-@app.get("/")
-def index() -> FileResponse:
-    return FileResponse(_page(), headers={"Cache-Control": "no-cache, must-revalidate"})
-
-
-@app.get("/spotify")
-def spotify_mode() -> FileResponse:
-    # Same page, same controls; the page reads the path and switches to Spotify copy.
-    return FileResponse(_page(), headers={"Cache-Control": "no-cache, must-revalidate"})
-
-
-@app.get("/favicon.ico", include_in_schema=False)
-def favicon() -> Response:
-    icon = WEB_DIR / "favicon.ico"
-    return FileResponse(icon) if icon.is_file() else Response(status_code=204)
-
-
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-if WEB_DIR.is_dir():
-    app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")

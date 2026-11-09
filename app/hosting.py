@@ -68,7 +68,6 @@ def inside_root(path: str | Path) -> bool:
 
 
 def clamp(path: str | Path) -> Path:
-    """The path itself when it is allowed, otherwise the root folder."""
     target = Path(path).expanduser()
     base = root()
     if base is None or inside_root(target):
