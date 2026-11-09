@@ -115,6 +115,15 @@ export function Results({
           {plural(items.length, "song")}
           {owned > 0 && ` · ${owned} already there`}
         </p>
+        {owned > 0 && owned < items.length && (
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={() => onSelectedChange(new Set(items.filter((item) => !isOwned(item)).map(itemKey)))}
+          >
+            Only new
+          </Button>
+        )}
       </div>
 
       <ul className="max-h-[min(60vh,640px)] divide-y overflow-y-auto">
