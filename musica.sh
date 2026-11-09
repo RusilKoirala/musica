@@ -8,7 +8,7 @@ PY=".venv/bin/python"
 if [ ! -x "$PY" ]; then
   echo "First run: creating the virtualenv and installing dependencies ..."
   if command -v uv >/dev/null 2>&1; then
-    uv venv .venv
+    uv venv --seed .venv
     uv pip install --python "$PY" fastapi "uvicorn[standard]" yt-dlp psutil mutagen requests
   else
     python3 -m venv .venv
