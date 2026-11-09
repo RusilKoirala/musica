@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2Icon } from "lucide-react";
+import { Loader2Icon, PlayIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,23 +9,27 @@ import { Label } from "@/components/ui/label";
 import { post } from "@/lib/api";
 import { Logo } from "./logo";
 
-export function Login({ onDone }: { onDone: () => void }) {
+export function Login({ onDone, demo }: { onDone: () => void; demo?: boolean }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"password" | "demo" | null>(null);
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
-    setBusy(true);
+  async function signIn(body: { password?: string; demo?: boolean }) {
+    setBusy(body.demo ? "demo" : "password");
     setError("");
     try {
-      await post("/api/login", { password });
+      await post("/api/login", body);
       onDone();
     } catch (exc) {
       setError((exc as Error).message);
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
+  }
+
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    void signIn({ password });
   }
 
   return (
@@ -52,11 +56,31 @@ export function Login({ onDone }: { onDone: () => void }) {
                 />
                 {error && <p className="text-sm text-destructive">{error}</p>}
               </div>
-              <Button type="submit" className="w-full" size="lg" disabled={busy || !password}>
-                {busy && <Loader2Icon className="animate-spin" />}
+              <Button type="submit" className="w-full" size="lg" disabled={Boolean(busy) || !password}>
+                {busy === "password" && <Loader2Icon className="animate-spin" />}
                 Continue
               </Button>
             </form>
+            {demo && (
+              <>
+                <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="h-px flex-1 bg-border" />
+                  or
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full"
+                  disabled={Boolean(busy)}
+                  onClick={() => void signIn({ demo: true })}
+                >
+                  {busy === "demo" ? <Loader2Icon className="animate-spin" /> : <PlayIcon />}
+                  Try the demo
+                </Button>
+                <p className="mt-2 text-center text-xs text-muted-foreground">No password needed. A few songs at a time.</p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

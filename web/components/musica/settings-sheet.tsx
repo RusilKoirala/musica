@@ -55,7 +55,9 @@ export function SettingsSheet({
   health,
   onHealth,
   onSignOut,
+  demo = false,
 }: {
+  demo?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   settings: Settings | null;
@@ -98,77 +100,86 @@ export function SettingsSheet({
       <SheetContent className="w-full gap-0 sm:max-w-md">
         <SheetHeader className="border-b">
           <SheetTitle>Settings</SheetTitle>
-          <SheetDescription>Saved on the server and used for every download.</SheetDescription>
+          <SheetDescription>
+            {demo
+              ? "This is the demo, so server settings are read-only."
+              : "Saved on the server and used for every download."}
+          </SheetDescription>
         </SheetHeader>
 
         {settings && (
           <div className="flex-1 space-y-6 overflow-y-auto p-4">
-            <Section title="Files">
-              <Row title="Naming">
-                <SimpleSelect
-                  className="w-40"
-                  value={settings.naming}
-                  onChange={(naming) => onSettings({ naming: naming as Settings["naming"] })}
-                  options={[
-                    { value: "artist_title", label: "Artist - Title" },
-                    { value: "title", label: "Title only" },
-                  ]}
-                />
-              </Row>
-              {toggle("number_files", "Number playlist tracks", "01 - Song.mp3, so they play in order")}
-              {toggle("playlist_subfolders", "Folder per playlist")}
-              {toggle("skip_name_duplicates", "Skip near-duplicates", "Songs whose name matches a file already there")}
-            </Section>
+            {!demo && (
+              <>
+                <Section title="Files">
+                  <Row title="Naming">
+                    <SimpleSelect
+                      className="w-40"
+                      value={settings.naming}
+                      onChange={(naming) => onSettings({ naming: naming as Settings["naming"] })}
+                      options={[
+                        { value: "artist_title", label: "Artist - Title" },
+                        { value: "title", label: "Title only" },
+                      ]}
+                    />
+                  </Row>
+                  {toggle("number_files", "Number playlist tracks", "01 - Song.mp3, so they play in order")}
+                  {toggle("playlist_subfolders", "Folder per playlist")}
+                  {toggle("skip_name_duplicates", "Skip near-duplicates", "Songs whose name matches a file already there")}
+                </Section>
 
-            <Section title="Car stereo">
-              {toggle("car_mode", "Car mode", "ID3v2.3 tags, small cover art, folder.jpg")}
-              <Row title="Genre tag" htmlFor="car_genre">
-                <Input
-                  id="car_genre"
-                  className="w-40"
-                  defaultValue={settings.car_genre}
-                  onBlur={(e) => e.target.value !== settings.car_genre && onSettings({ car_genre: e.target.value })}
-                />
-              </Row>
-            </Section>
+                <Section title="Car stereo">
+                  {toggle("car_mode", "Car mode", "ID3v2.3 tags, small cover art, folder.jpg")}
+                  <Row title="Genre tag" htmlFor="car_genre">
+                    <Input
+                      id="car_genre"
+                      className="w-40"
+                      defaultValue={settings.car_genre}
+                      onBlur={(e) => e.target.value !== settings.car_genre && onSettings({ car_genre: e.target.value })}
+                    />
+                  </Row>
+                </Section>
 
-            <Section title="Downloading">
-              <Row title="Search results">
-                <SimpleSelect
-                  className="w-40"
-                  value={String(settings.search_results)}
-                  onChange={(v) => onSettings({ search_results: Number(v) })}
-                  options={["5", "10", "20", "30", "50"].map((v) => ({ value: v, label: `${v} results` }))}
-                />
-              </Row>
-              <Row title="At the same time" hint="1 is gentlest on slow drives">
-                <SimpleSelect
-                  className="w-40"
-                  value={String(settings.concurrency)}
-                  onChange={(v) => onSettings({ concurrency: Number(v) })}
-                  options={["1", "2", "3", "4"].map((v) => ({ value: v, label: `${v} at a time` }))}
-                />
-              </Row>
-              {toggle("stage_locally", "Stage on internal disk", "Convert first, then copy one finished file")}
-              {toggle("archive_on_drive", "Archive on the drive", "Keep download history with the files")}
-              <div className="space-y-1.5 py-2.5">
-                <Label htmlFor="cookiefile" className="text-sm font-medium">
-                  Cookies file
-                </Label>
-                <p className="text-xs text-muted-foreground">Path to a cookies.txt for videos that need sign-in.</p>
-                <Input
-                  id="cookiefile"
-                  placeholder="/data/cookies.txt"
-                  className="font-mono text-xs"
-                  value={cookies ?? settings.cookiefile}
-                  onChange={(e) => setCookies(e.target.value)}
-                  onBlur={() => {
-                    if (cookies !== null && cookies !== settings.cookiefile) onSettings({ cookiefile: cookies });
-                    setCookies(null);
-                  }}
-                />
-              </div>
-            </Section>
+                <Section title="Downloading">
+                  <Row title="Search results">
+                    <SimpleSelect
+                      className="w-40"
+                      value={String(settings.search_results)}
+                      onChange={(v) => onSettings({ search_results: Number(v) })}
+                      options={["5", "10", "20", "30", "50"].map((v) => ({ value: v, label: `${v} results` }))}
+                    />
+                  </Row>
+                  <Row title="At the same time" hint="1 is gentlest on slow drives">
+                    <SimpleSelect
+                      className="w-40"
+                      value={String(settings.concurrency)}
+                      onChange={(v) => onSettings({ concurrency: Number(v) })}
+                      options={["1", "2", "3", "4"].map((v) => ({ value: v, label: `${v} at a time` }))}
+                    />
+                  </Row>
+                  {toggle("stage_locally", "Stage on internal disk", "Convert first, then copy one finished file")}
+                  {toggle("archive_on_drive", "Archive on the drive", "Keep download history with the files")}
+                  <div className="space-y-1.5 py-2.5">
+                    <Label htmlFor="cookiefile" className="text-sm font-medium">
+                      Cookies file
+                    </Label>
+                    <p className="text-xs text-muted-foreground">Path to a cookies.txt for videos that need sign-in.</p>
+                    <Input
+                      id="cookiefile"
+                      placeholder="/data/cookies.txt"
+                      className="font-mono text-xs"
+                      value={cookies ?? settings.cookiefile}
+                      onChange={(e) => setCookies(e.target.value)}
+                      onBlur={() => {
+                        if (cookies !== null && cookies !== settings.cookiefile) onSettings({ cookiefile: cookies });
+                        setCookies(null);
+                      }}
+                    />
+                  </div>
+                </Section>
+
+              </>
+            )}
 
             <Section title="Appearance">
               <div className="grid grid-cols-3 gap-1.5 py-2.5">
@@ -199,11 +210,17 @@ export function SettingsSheet({
                     <Check ok label="Musica" value={`${health.version} · ${health.os}`} />
                   </>
                 )}
-                <Button variant="outline" className="mt-3 w-full" onClick={updateYtdlp} disabled={updating}>
-                  {updating ? <Loader2Icon className="animate-spin" /> : <RefreshCwIcon />}
-                  {updating ? "Updating yt-dlp" : "Update yt-dlp"}
-                </Button>
-                <p className="mt-2 text-xs text-muted-foreground">When YouTube downloads start failing, this usually fixes it.</p>
+                {!demo && (
+                  <>
+                    <Button variant="outline" className="mt-3 w-full" onClick={updateYtdlp} disabled={updating}>
+                      {updating ? <Loader2Icon className="animate-spin" /> : <RefreshCwIcon />}
+                      {updating ? "Updating yt-dlp" : "Update yt-dlp"}
+                    </Button>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      When YouTube downloads start failing, this usually fixes it.
+                    </p>
+                  </>
+                )}
               </div>
             </Section>
 

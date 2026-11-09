@@ -60,6 +60,7 @@ export function Results({
   onDownload,
   downloading,
   canDownload,
+  limit,
 }: {
   preview: ResolveResponse;
   selected: Set<string>;
@@ -67,6 +68,8 @@ export function Results({
   onDownload: (force: boolean) => void;
   downloading: boolean;
   canDownload: boolean;
+  // Demo visitors may only download this many songs at once.
+  limit?: number | null;
 }) {
   const items = preview.items;
   const owned = items.filter(isOwned).length;
@@ -74,6 +77,7 @@ export function Results({
   // Picking only songs that are already there means "put them there again".
   const force = chosen.length > 0 && chosen.every(isOwned);
   const all = chosen.length === items.length && items.length > 0;
+  const overLimit = Boolean(limit && chosen.length > limit);
 
   if (!items.length) {
     return (
@@ -175,10 +179,18 @@ export function Results({
       </ul>
 
       <div className="flex items-center justify-between gap-3 border-t bg-muted/30 px-4 py-3">
-        <p className="text-sm text-muted-foreground">
-          <span className="tabular font-medium text-foreground">{chosen.length}</span> selected
+        <p className={cn("text-sm text-muted-foreground", overLimit && "text-destructive")}>
+          <span className={cn("tabular font-medium", overLimit ? "text-destructive" : "text-foreground")}>
+            {chosen.length}
+          </span>{" "}
+          selected
+          {limit ? ` · demo allows ${limit}` : ""}
         </p>
-        <Button size="lg" onClick={() => onDownload(force)} disabled={!chosen.length || downloading || !canDownload}>
+        <Button
+          size="lg"
+          onClick={() => onDownload(force)}
+          disabled={!chosen.length || downloading || !canDownload || overLimit}
+        >
           {downloading ? <Loader2Icon className="animate-spin" /> : <DownloadIcon />}
           {force ? "Download again" : `Download ${chosen.length || ""}`.trim()}
         </Button>

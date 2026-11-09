@@ -35,6 +35,7 @@ type Auth = "checking" | "in" | "out" | "offline";
 export default function Home() {
   const [auth, setAuth] = useState<Auth>("checking");
   const [health, setHealth] = useState<Health | null>(null);
+  const [role, setRole] = useState<"admin" | "demo">("admin");
 
   const loadHealth = useCallback(async () => {
     try {
@@ -52,7 +53,8 @@ export default function Home() {
     if (!result) return;
     if (!result.auth) return setAuth("in");
     try {
-      await api("/api/me");
+      const me = await api<{ role: "admin" | "demo" }>("/api/me");
+      setRole(me.role);
       setAuth("in");
     } catch (exc) {
       setAuth(exc instanceof ApiError && exc.status === 401 ? "out" : "offline");
@@ -88,11 +90,30 @@ export default function Home() {
       </main>
     );
   }
-  if (auth === "out") return <Login onDone={() => setAuth("in")} />;
-  return <App health={health} onHealth={loadHealth} onSignOut={() => post("/api/logout").then(() => setAuth("out"))} />;
+  if (auth === "out") return <Login demo={health?.demo} onDone={() => void checkAuth()} />;
+  return (
+    <App
+      health={health}
+      demoLimit={role === "demo" ? (health?.demo_limit ?? 5) : null}
+      onHealth={loadHealth}
+      onSignOut={() => post("/api/logout").then(() => setAuth("out"))}
+    />
+  );
 }
 
-function App({ health, onHealth, onSignOut }: { health: Health | null; onHealth: () => void; onSignOut: () => void }) {
+function App({
+  health,
+  demoLimit,
+  onHealth,
+  onSignOut,
+}: {
+  health: Health | null;
+  // Set for demo visitors: the most songs one download may hold.
+  demoLimit: number | null;
+  onHealth: () => void;
+  onSignOut: () => void;
+}) {
+  const demo = demoLimit !== null;
   const { queue, logs, connected } = useQueue(true);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [drives, setDrives] = useState<DrivesResponse | null>(null);
@@ -159,6 +180,8 @@ function App({ health, onHealth, onSignOut }: { health: Health | null; onHealth:
     async (partial: Partial<Settings>) => {
       const before = settings;
       setSettings((current) => (current ? { ...current, ...partial } : current));
+      // Demo visitors only change their own downloads, never the server's settings.
+      if (demo) return true;
       try {
         setSettings(await put<Settings>("/api/settings", { settings: partial }));
         return true;
@@ -168,7 +191,7 @@ function App({ health, onHealth, onSignOut }: { health: Health | null; onHealth:
         return false;
       }
     },
-    [settings],
+    [settings, demo],
   );
 
   async function search(query: string) {
@@ -179,7 +202,8 @@ function App({ health, onHealth, onSignOut }: { health: Health | null; onHealth:
       const result = await post<ResolveResponse>("/api/resolve", { query });
       if (id !== searchId.current) return;
       setPreview(result);
-      setSelected(new Set(result.items.filter((item) => !isOwned(item)).map(itemKey)));
+      const fresh = result.items.filter((item) => !isOwned(item)).map(itemKey);
+      setSelected(new Set(demoLimit ? fresh.slice(0, demoLimit) : fresh));
     } catch (exc) {
       if (id === searchId.current) toast.error((exc as Error).message);
     } finally {
@@ -252,6 +276,9 @@ function App({ health, onHealth, onSignOut }: { health: Health | null; onHealth:
       <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
           <Logo />
+          {demo && (
+            <span className="rounded-md bg-brand/15 px-2 py-0.5 text-xs font-medium text-brand">Demo</span>
+          )}
           <div className="ml-auto flex items-center gap-1">
             {health?.root && (
               <span
@@ -309,6 +336,7 @@ function App({ health, onHealth, onSignOut }: { health: Health | null; onHealth:
               onDownload={download}
               downloading={downloading}
               canDownload={Boolean(destination && settings)}
+              limit={demoLimit}
             />
           )}
         </div>
@@ -319,6 +347,7 @@ function App({ health, onHealth, onSignOut }: { health: Health | null; onHealth:
       </main>
 
       <SettingsSheet
+        demo={demo}
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         settings={settings}

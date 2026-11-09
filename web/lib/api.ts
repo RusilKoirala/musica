@@ -58,6 +58,8 @@ export type Health = {
   js_runtime: string | null;
   python: string;
   auth: boolean;
+  demo: boolean;
+  demo_limit: number;
   can_format: boolean;
   root: string | null;
 };
