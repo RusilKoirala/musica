@@ -107,6 +107,12 @@ function App({ health, onHealth, onSignOut }: { health: Health | null; onHealth:
   const [formatting, setFormatting] = useState<Drive | null>(null);
   const searchId = useRef(0);
 
+  // Show progress in the tab title, so it can sit in the background.
+  const left = queue ? queue.counts.pending + queue.counts.running : 0;
+  useEffect(() => {
+    document.title = left ? `(${left}) Musica` : "Musica";
+  }, [left]);
+
   const loadDrives = useCallback(async () => {
     setRefreshing(true);
     try {
