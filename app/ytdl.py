@@ -954,13 +954,40 @@ def write_tags(path: Path, info: dict[str, Any], item: dict[str, Any], settings:
 UPDATE_LOCK = threading.Lock()
 
 
+def _upgrade_command() -> list[str] | None:
+    """How to upgrade yt-dlp inside this interpreter.
+
+    A venv made by uv has no pip, so prefer uv when it is around, then pip, and as a
+    last resort bootstrap pip with ensurepip.
+    """
+    import importlib.util
+    import sys
+
+    uv = shutil.which("uv")
+    if uv:
+        return [uv, "pip", "install", "--python", sys.executable, "--upgrade", "yt-dlp"]
+    if importlib.util.find_spec("pip") is None:
+        try:
+            subprocess.run([sys.executable, "-m", "ensurepip", "--upgrade"], capture_output=True, timeout=300, check=True)
+        except (OSError, subprocess.SubprocessError):
+            return None
+    return [sys.executable, "-m", "pip", "install", "--upgrade", "yt-dlp"]
+
+
 def self_update() -> dict[str, Any]:
-    """`pip install -U yt-dlp` in our own interpreter, since YouTube changes constantly."""
+    """Upgrade yt-dlp in our own interpreter, since YouTube changes constantly."""
     import sys
 
     before = ytdlp_version()
     with UPDATE_LOCK:
-        command = [sys.executable, "-m", "pip", "install", "--upgrade", "yt-dlp"]
+        command = _upgrade_command()
+        if command is None:
+            return {
+                "ok": False,
+                "before": before,
+                "after": before,
+                "error": "Neither uv nor pip is available. Run: uv pip install -U yt-dlp",
+            }
         try:
             result = subprocess.run(command, capture_output=True, text=True, timeout=600)
         except (OSError, subprocess.SubprocessError) as exc:
