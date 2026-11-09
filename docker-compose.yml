@@ -5,6 +5,7 @@ services:
     restart: unless-stopped
 
   api:
+    image: ghcr.io/rusilkoirala/musica-api:latest
     build:
       context: .
       dockerfile: docker/api.Dockerfile
@@ -21,6 +22,7 @@ services:
       - ${DATA_DIR:-./data}:/data
 
   web:
+    image: ghcr.io/rusilkoirala/musica-web:latest
     build:
       context: .
       dockerfile: docker/web.Dockerfile
