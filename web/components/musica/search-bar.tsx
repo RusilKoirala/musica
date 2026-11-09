@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { ArrowRightIcon, Loader2Icon, SearchIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "./kbd";
@@ -21,6 +22,7 @@ function sourceLabel(text: string) {
 export function SearchBar({ busy, onSearch }: { busy: boolean; onSearch: (query: string) => void }) {
   const [query, setQuery] = useState("");
   const input = useRef<HTMLInputElement>(null);
+  const spotifyMode = usePathname()?.startsWith("/spotify");
   const source = sourceLabel(query.trim());
 
   useEffect(() => {
@@ -52,7 +54,9 @@ export function SearchBar({ busy, onSearch }: { busy: boolean; onSearch: (query:
           ref={input}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Song name, YouTube link or Spotify playlist"
+          placeholder={
+            spotifyMode ? "Paste a Spotify playlist, album or song link" : "Song name, YouTube link or Spotify playlist"
+          }
           className="h-full min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
           autoFocus
           spellCheck={false}
@@ -75,8 +79,8 @@ export function SearchBar({ busy, onSearch }: { busy: boolean; onSearch: (query:
         </Button>
       </form>
       <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-        <span className="mr-1">Try</span>
-        {EXAMPLES.map((example) => (
+        <span className="mr-1">{spotifyMode ? "Playlists have to be public." : "Try"}</span>
+        {(spotifyMode ? [] : EXAMPLES).map((example) => (
           <button
             key={example}
             type="button"
