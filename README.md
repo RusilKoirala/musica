@@ -72,6 +72,41 @@ python -m app --host 0.0.0.0     # listen on your network (be careful, there is 
 python -m app --no-browser       # don't open a browser tab
 ```
 
+## Hosting it with Docker
+
+You can also run Musica on a server or a VM and use it from any browser. The repo has a compose file with two containers: `api` (the Python backend with ffmpeg and yt-dlp) and `web` (the Next.js interface, served by nginx, which also forwards `/api` to the backend).
+
+```bash
+git clone https://github.com/rusilkoirala/musica.git
+cd musica
+cp .env.example .env      # set MUSICA_PASSWORD at least
+docker compose up -d --build
+```
+
+Then open `http://<your-vm>:8080`. Songs are saved to `./music` on the VM and settings to `./data`; change `MUSIC_DIR`, `DATA_DIR` and `PORT` in `.env` if you want them somewhere else.
+
+A few things work differently on a server:
+
+- **Password.** With `MUSICA_PASSWORD` set, the page asks for it once and remembers you for 30 days. Leave it empty only if the VM is not reachable from outside your own network.
+- **One folder.** Everything stays inside the music folder. The folder picker can't leave it and downloads can't be written outside it.
+- **Getting the files.** Finished songs have a download button in the queue, so you can save them from the VM to the device you're using.
+- **No formatting.** The format-drive button is turned off in the container.
+- **Cookies.** Put `cookies.txt` in the data folder and set the path to `/data/cookies.txt` in Settings.
+- **HTTPS.** If you put it behind Caddy, Traefik or another reverse proxy, point it at the `web` container's port. Nothing else needs to change.
+
+To update, `git pull` and run `docker compose up -d --build` again.
+
+## Working on the web UI
+
+The interface lives in `web/` (Next.js, Tailwind and shadcn/ui) and builds to plain static files. While developing, run the backend and the Next dev server side by side; the dev server forwards `/api` to `http://127.0.0.1:8000`:
+
+```bash
+.venv/bin/python -m app --no-browser     # terminal 1
+cd web && npm install && npm run dev     # terminal 2, open http://localhost:3000
+```
+
+Set `MUSICA_BACKEND` to forward to another address. `npm run build` writes the static site to `web/out`.
+
 ### Spotify support
 
 Spotify links are read through [spotDL](https://github.com/spotDL/spotify-downloader), which is not installed by default. Its own dependency pins clash with the versions of FastAPI and uvicorn this app uses, so install it without its pinned dependencies and add the libraries it actually needs:
@@ -113,7 +148,10 @@ app/
   sanitize.py   file name cleanup and fuzzy name matching
   queue.py      download queue, progress and server-sent events
   config.py     settings file
-static/         the web page (plain HTML, CSS and JavaScript, no build step)
+  hosting.py    password, music folder and other server-only options
+web/            the web interface (Next.js + shadcn/ui)
+docker/         Dockerfiles and the nginx config for hosting
+static/         the original page (plain HTML, CSS and JavaScript)
 tests/          check scripts
 musica.sh       launcher
 ```
