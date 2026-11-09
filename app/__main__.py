@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import argparse
@@ -12,7 +10,6 @@ import uvicorn
 HOST = "127.0.0.1"
 PORT = 8000
 
-# main function bruhh
 def main() -> None:
     parser = argparse.ArgumentParser(prog="musica", description="Local music downloader for a pendrive.")
     parser.add_argument("--port", type=int, default=PORT)
@@ -23,7 +20,6 @@ def main() -> None:
     url = f"http://{arguments.host}:{arguments.port}"
 
     if not arguments.no_browser:
-        # just health timeout u should see
         def open_late() -> None:
             import urllib.request
             for _ in range(60):

@@ -1,14 +1,3 @@
-"""Spotify links -> the same track items the YouTube preview uses.
-
-Spotify never serves the audio, so a Spotify item is only a precise description of a song
-(clean title, artists, album, length, cover). Its ``url`` is a ``ytsearch:`` query that
-``ytdl.download_item`` turns into the best-matching YouTube upload at download time, so the
-whole queue - progress, retry, skip rules - works unchanged.
-
-The item ``id`` is the Spotify track id. Once a song is saved it is written to the drive's
-archive as ``spotify <id>``, so syncing the same playlist again downloads only new songs.
-"""
-
 from __future__ import annotations
 
 import re
@@ -29,7 +18,6 @@ def is_spotify(text: str) -> bool:
 
 
 def _client() -> None:
-    """spotdl's client is a process-wide singleton that refuses a second init."""
     global _ready
     with _INIT_LOCK:
         if _ready:
@@ -39,7 +27,7 @@ def _client() -> None:
 
         try:
             SpotifyClient.init(DEFAULT_CONFIG["client_id"], DEFAULT_CONFIG["client_secret"], no_cache=True)
-        except Exception as exc:  # already initialised elsewhere is fine
+        except Exception as exc:
             if "already been initialized" not in str(exc):
                 raise
         _ready = True
@@ -50,12 +38,6 @@ _SIZE_640 = "ab67616d0000b273"
 
 
 def cover_for(track_id: str) -> str | None:
-    """A track's 640x640 album cover from Spotify's public oEmbed endpoint.
-
-    spotdl's playlist reader gets tracks with an empty ``album`` (no images, no name), so
-    playlist songs would otherwise have no cover at all. oEmbed needs no login and answers
-    in a fraction of a second; its 300px URL shares the image id with the 640px one.
-    """
     if not track_id:
         return None
     import json
@@ -105,7 +87,6 @@ def _item(song: Any, list_name: str | None, position: int | None) -> dict[str, A
 
 
 def resolve(text: str) -> dict[str, Any]:
-    """Metadata-only preview of a Spotify track, album or playlist link."""
     match = SPOTIFY_URL_RE.search(text or "")
     if not match:
         raise ValueError("That is not a Spotify track, album or playlist link.")

@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import asyncio
@@ -22,7 +20,6 @@ from .queue import queue
 
 APP_DIR = Path(__file__).resolve().parent
 STATIC_DIR = APP_DIR.parent / "static"
-# The Next.js build (`npm run build` in web/). When it is missing the old page is served.
 WEB_DIR = Path(os.environ.get("MUSICA_WEB_DIR") or (APP_DIR.parent / "web" / "out"))
 AUDIO_EXTENSIONS = {"." + ext for ext in config.CODEC_EXTENSIONS.values()}
 
@@ -56,11 +53,9 @@ if hosting.cors_origins():
         allow_headers=["*"],
     )
 
-# Reachable without signing in: the page needs these to know whether to show a login.
 _OPEN_PATHS = {"/api/health", "/api/login", "/api/logout"}
 
 
-# What a demo visitor may not do: anything that changes the server for everyone.
 _ADMIN_ONLY = {
     ("PUT", "/api/settings"),
     ("POST", "/api/selfupdate"),
@@ -82,8 +77,6 @@ async def require_login(request: Request, call_next):
     return await call_next(request)
 
 
-# ----------------------------------------------------------------------- models
-
 class ResolveRequest(BaseModel):
     query: str = Field(min_length=1, max_length=3000)
     limit: int | None = None
@@ -95,7 +88,6 @@ class DownloadRequest(BaseModel):
     items: list[dict[str, Any]] = Field(default_factory=list)
     label: str = ""
     force: bool = False
-    # Per-batch overrides so the preview bar can say "this run only, as 192k m4a".
     settings: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -126,18 +118,13 @@ class FormatRequest(BaseModel):
     path: str = Field(min_length=1)
     fstype: str = "fat32"
     label: str = ""
-    # The UI makes the person type the word FORMAT; nothing here trusts a stray click.
     confirm: str = ""
 
-
-# ---------------------------------------------------------------------- errors
 
 @app.exception_handler(ValueError)
 async def _value_error(_request, exc: ValueError) -> JSONResponse:
     return JSONResponse({"detail": str(exc)}, status_code=400)
 
-
-# ----------------------------------------------------------------------- health
 
 @app.get("/api/health")
 def health() -> dict[str, Any]:
@@ -160,7 +147,6 @@ def health() -> dict[str, Any]:
 
 @app.get("/api/me")
 def me(request: Request) -> dict[str, Any]:
-    # The middleware already rejected anyone without a session.
     role = getattr(request.state, "role", None) or "admin"
     return {"ok": True, "role": role, "demo_limit": hosting.demo_limit() if role == "demo" else None}
 
@@ -176,7 +162,7 @@ def login(body: LoginRequest, request: Request) -> JSONResponse:
     elif hosting.check_password(body.password):
         token = hosting.session_token()
     else:
-        time.sleep(0.6)  # makes guessing slow
+        time.sleep(0.6)
         raise HTTPException(401, "Wrong password.")
     response = JSONResponse({"ok": True})
     response.set_cookie(
@@ -199,7 +185,6 @@ def logout() -> JSONResponse:
 
 @app.post("/api/selfupdate")
 def selfupdate() -> dict[str, Any]:
-    """YouTube changes often, so let the user pull a fresh yt-dlp without a terminal."""
     result = ytdl.self_update()
     queue.log("ok" if result["ok"] else "error",
               f"yt-dlp {result['before']} -> {result['after']}" if result["ok"]
@@ -207,8 +192,6 @@ def selfupdate() -> dict[str, Any]:
     queue.publish("update", queue.state())
     return result
 
-
-# --------------------------------------------------------------------- settings
 
 @app.get("/api/settings")
 def get_settings() -> dict[str, Any]:
@@ -223,7 +206,6 @@ def get_settings() -> dict[str, Any]:
 @app.put("/api/settings")
 def put_settings(body: SettingsRequest) -> dict[str, Any]:
     if "destination" in body.settings:
-        # Validate early rather than failing mid-download on a slow drive.
         destination = str(body.settings["destination"]).strip()
         if destination:
             try:
@@ -236,8 +218,6 @@ def put_settings(body: SettingsRequest) -> dict[str, Any]:
         raise HTTPException(409, f"Settings could not be saved to disk: {exc}") from exc
 
 
-# ------------------------------------------------------------------- destinations
-
 @app.get("/api/drives")
 def get_drives() -> dict[str, Any]:
     return drives.list_drives()
@@ -245,7 +225,6 @@ def get_drives() -> dict[str, Any]:
 
 @app.post("/api/drives/plan")
 def format_plan(body: FormatRequest) -> dict[str, Any]:
-    """What would be run, so the dialog can show it before anything is erased."""
     if not hosting.allow_format():
         raise HTTPException(403, "Formatting drives is turned off on this server.")
     drive = next((d for d in drives.list_drives()["drives"] if str(d["path"]).rstrip("/") == body.path.rstrip("/")), None)
@@ -262,7 +241,6 @@ def format_plan(body: FormatRequest) -> dict[str, Any]:
 
 @app.post("/api/drives/format")
 def format_drive(body: FormatRequest) -> dict[str, Any]:
-    """Erase and re-format the stick to something the car will mount."""
     try:
         result = drives.format_drive(body.path, body.fstype, body.confirm, body.label)
     except ValueError as exc:
@@ -279,11 +257,8 @@ def browse(body: BrowseRequest) -> dict[str, Any]:
     return drives.browse(body.path, body.include_files)
 
 
-# ---------------------------------------------------------------------- resolve
-
 @app.post("/api/resolve")
 def resolve(body: ResolveRequest) -> dict[str, Any]:
-    """Metadata only - titles, durations, thumbnails - never the audio."""
     settings = config.load()
     limit = body.limit or int(settings.get("search_results", 10))
     try:
@@ -311,12 +286,9 @@ def resolve(body: ResolveRequest) -> dict[str, Any]:
     archive_ids = library.read_archive_ids(archive)
     index = library.index_for(destination).build()
 
-    # Flag what we already have while the preview is still on screen, so the user can
-    # untick the obvious noise before committing anything.
     existing = index.entries
     for item in result["items"]:
         on_disk = index.find_duplicate(item["title"], item.get("artist", ""), item.get("duration"))
-        # An archive line for a file that was since deleted does not make the song "owned".
         item["in_archive"] = library.in_archive(archive_ids, str(item.get("id") or "")) and bool(on_disk)
         duplicate = on_disk if settings.get("skip_name_duplicates", True) else None
         item["name_duplicate"] = duplicate
@@ -330,8 +302,6 @@ def resolve(body: ResolveRequest) -> dict[str, Any]:
         "scanned_files": len(existing),
     }
 
-
-# ------------------------------------------------------------------------ queue
 
 @app.post("/api/download")
 def download(body: DownloadRequest, request: Request) -> dict[str, Any]:
@@ -350,8 +320,6 @@ def download(body: DownloadRequest, request: Request) -> dict[str, Any]:
     if not ytdl.ffmpeg_available()["ok"] and settings.get("format") != "best":
         raise HTTPException(409, "ffmpeg is not installed, so audio conversion will fail. Install it and retry.")
 
-    # Remember a working destination so the next launch starts on the pendrive.
-    # Best effort: a read-only or full config directory must not fail the download.
     if settings.get("destination") != destination:
         try:
             config.update({"destination": destination})
@@ -372,7 +340,6 @@ def download(body: DownloadRequest, request: Request) -> dict[str, Any]:
 
 @app.get("/api/file")
 def download_file(path: str) -> FileResponse:
-    """Hand a finished song to the browser, for when the server is not your own laptop."""
     target = Path(path).expanduser()
     try:
         target = target.resolve(strict=True)
@@ -386,7 +353,6 @@ def download_file(path: str) -> FileResponse:
         target.is_relative_to(Path(job["destination"]).expanduser().resolve())
         for job in queue.state()["jobs"]
     ):
-        # Without a root folder, only serve songs this queue itself wrote.
         raise HTTPException(403, "Only songs from the queue can be fetched.")
     return FileResponse(target, filename=target.name)
 
@@ -420,8 +386,6 @@ def queue_clear() -> dict[str, Any]:
 
 @app.get("/api/events")
 async def events() -> StreamingResponse:
-    """Server-Sent Events: one connection, whole-queue snapshots as they change."""
-
     async def stream() -> AsyncIterator[bytes]:
         subscriber: asyncio.Queue = queue.subscribe()
         try:
@@ -431,7 +395,7 @@ async def events() -> StreamingResponse:
                 try:
                     message = await asyncio.wait_for(subscriber.get(), timeout=15)
                 except asyncio.TimeoutError:
-                    yield b": keep-alive\n\n"  # stops proxies from closing an idle stream
+                    yield b": keep-alive\n\n"
                     continue
                 yield f"event: snapshot\ndata: {message}\n\n".encode()
         except asyncio.CancelledError:
@@ -444,4 +408,3 @@ async def events() -> StreamingResponse:
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache, must-revalidate", "X-Accel-Buffering": "no", "Connection": "keep-alive"},
     )
-

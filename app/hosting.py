@@ -1,15 +1,3 @@
-"""Settings for running Musica on a server instead of a laptop.
-
-Everything here is driven by environment variables so a Docker container can be
-configured without touching the code. With none of them set the app behaves exactly
-like the local desktop version.
-
-  MUSICA_PASSWORD      require this password before any /api call (cookie based)
-  MUSICA_ROOT          keep every read and write inside this folder (e.g. /music)
-  MUSICA_ALLOW_FORMAT  "0" hides and blocks drive formatting
-  MUSICA_CORS_ORIGINS  comma separated origins allowed to call the API from elsewhere
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -29,7 +17,6 @@ def auth_enabled() -> bool:
 
 
 def session_token() -> str:
-    """A stable token derived from the password, so a restart keeps people signed in."""
     secret = password().encode()
     return hmac.new(secret, b"musica-session-v1", hashlib.sha256).hexdigest()
 
@@ -41,11 +28,6 @@ def check_password(candidate: str) -> bool:
 def check_token(token: str | None) -> bool:
     return bool(token) and hmac.compare_digest(token or "", session_token())
 
-
-# ------------------------------------------------------------------ demo access
-# MUSICA_DEMO=1 adds a "Try the demo" button to the login page. Demo visitors can
-# search and download, but only a few songs at a time, and cannot change settings,
-# update yt-dlp or touch drives.
 
 def demo_enabled() -> bool:
     flag = os.environ.get("MUSICA_DEMO", "").strip().lower() in ("1", "true", "yes", "on")
@@ -64,7 +46,6 @@ def demo_token() -> str:
 
 
 def role_for(token: str | None) -> str | None:
-    """"admin", "demo", or None when the cookie is missing or wrong."""
     if not auth_enabled():
         return "admin"
     if not token:

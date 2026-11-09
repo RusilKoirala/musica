@@ -1,17 +1,3 @@
-"""What already lives on the drive.
-
-Two independent skip mechanisms, because they catch different cases:
-
-1. **Same video** - yt-dlp's ``download_archive`` file. One line per downloaded ID.
-   We keep it on the pendrive (``.musica_archive.txt``) so a second computer inherits
-   the history, and so re-syncing a saved playlist downloads only the new songs.
-2. **Same song, different upload** - the IDs differ, so the archive is useless. We scan
-   the destination for audio files, normalize their names, and fuzzy-match.
-
-Scanning a pendrive is slow (many small files over USB), so the index is cached per
-destination with a short TTL and refreshed eagerly whenever we write a file there.
-"""
-
 from __future__ import annotations
 
 import threading
@@ -23,10 +9,8 @@ from .sanitize import is_audio_file, key_granularity, normalize_key, similar
 
 ARCHIVE_FILENAME = ".musica_archive.txt"
 
-# How long a cached name index stays trusted, and how deep we look for songs.
 INDEX_TTL_SECONDS = 120.0
 MAX_SCAN_DEPTH = 3
-# Above this similarity we call it the same recording; duration narrows false positives.
 NAME_MATCH_THRESHOLD = 0.86
 DURATION_TOLERANCE_SECONDS = 12.0
 
@@ -39,13 +23,11 @@ def archive_path(destination: str | Path, on_drive: bool = True) -> Path:
         return root / ARCHIVE_FILENAME
     from .config import CONFIG_DIR
 
-    # Keyed by destination so one off-drive archive still remembers many pendrives.
     slug = "".join(ch if ch.isalnum() else "_" for ch in str(root.resolve()))[:60]
     return CONFIG_DIR / "archives" / f"{slug}.txt"
 
 
 def read_archive_ids(path: Path) -> set[str]:
-    """Every ID or URL recorded by yt-dlp, as the trailing token of each line."""
     ids: set[str] = set()
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
@@ -70,8 +52,6 @@ def in_archive(ids: set[str], video_id: str) -> bool:
 
 
 class NameIndex:
-    """Normalized names of the audio files under one destination."""
-
     def __init__(self, root: Path):
         self.root = root
         self.entries: list[dict[str, Any]] = []
@@ -108,13 +88,12 @@ class NameIndex:
                         "path": child,
                         "display": child.relative_to(self.root).as_posix() if _is_under(child, self.root) else name,
                         "key": normalize_key(child.stem),
-                        "duration": None,  # cheap to fill in only when a candidate matches
+                        "duration": None,
                         "mtime": _mtime(child),
                     }
                 )
 
     def add(self, path: Path) -> None:
-        """Track a file we just wrote, so the next item sees it without a rescan."""
         with self.lock:
             if not (path.exists() and is_audio_file(path)):
                 return
@@ -129,7 +108,6 @@ class NameIndex:
             )
 
     def find_duplicate(self, title: str, artist: str = "", duration: float | None = None) -> dict[str, Any] | None:
-        """The closest existing file, if one is clearly the same recording."""
         self.build()
         key = normalize_key(title, artist)
         if not key:
@@ -141,12 +119,9 @@ class NameIndex:
             score = similar(key, entry["key"])
             if score <= best_score or score < NAME_MATCH_THRESHOLD:
                 continue
-            # Only spend time reading a header when the names already collide.
             length = _audio_duration(entry["path"])
             if duration and length and abs(float(duration) - length) > DURATION_TOLERANCE_SECONDS:
                 continue
-            # A one-word match ("hello" vs "hello world") is not enough on its own: it has
-            # to be backed by a matching duration, otherwise we would skip a different song.
             if min(key_granularity(key), key_granularity(entry["key"])) <= 1:
                 if not (duration and length and abs(float(duration) - length) <= DURATION_TOLERANCE_SECONDS):
                     continue
@@ -193,7 +168,6 @@ def _mtime(path: Path) -> float:
 
 
 def _audio_duration(path: Path) -> float | None:
-    """Read the length straight from the container; ffprobe is only a fallback."""
     try:
         from mutagen import File as MutagenFile
 

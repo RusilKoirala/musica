@@ -1,14 +1,3 @@
-"""Find removable drives, and let the user pick any folder instead.
-
-Detection differs enough per OS that it lives behind one function:
-  * macOS      - everything mounted under /Volumes is external (the boot volume is not).
-  * Linux      - udisks2 mounts removable media under /media/<user>/<LABEL> or /run/media/<LABEL>.
-  * Windows    - kernel32.GetDriveTypeW is the only reliable, dependency-free answer.
-
-psutil gives us the mount table and free space; on Windows we ask the OS for the
-removable flag rather than guessing from the drive letter.
-"""
-
 from __future__ import annotations
 
 import os
@@ -28,7 +17,6 @@ IS_WINDOWS = os.name == "nt"
 
 _APFS_DISK_RE = re.compile(r"^/dev/disk(\d+)")
 
-# Partitions that are the machine's own storage and never a pendrive.
 _MACOS_SKIP_MOUNTS = ("/Volumes/Recovery", "/Volumes/Data", "/Volumes/Preboot", "/Volumes/Update")
 
 
@@ -43,7 +31,6 @@ def _bytes(value: int) -> str:
 
 
 def _windows_drive_type(mount: str) -> int:
-    """0 unknown, 1 no root dir, 2 removable, 3 fixed, 4 network, 5 cd-rom, 6 ramdisk."""
     import ctypes
 
     try:
@@ -53,13 +40,11 @@ def _windows_drive_type(mount: str) -> int:
 
 
 def _label_from_mount(mount: str) -> str:
-    """Volume label where we can get it cheaply, else the last path component."""
     if IS_WINDOWS:
         try:
             import ctypes
 
             buffer = ctypes.create_unicode_buffer(261)
-            # GetVolumeInformationW returns the volume label in the second out-parameter.
             ok = ctypes.windll.kernel32.GetVolumeInformationW(  # type: ignore[attr-defined]
                 ctypes.c_wchar_p(mount), buffer, ctypes.c_int(len(buffer)), None, None, None, None, 0
             )
@@ -73,7 +58,6 @@ def _label_from_mount(mount: str) -> str:
 
 
 def _root_disk_index() -> int | None:
-    """On APFS the boot volume and its siblings share a disk number: /dev/disk3s1s1 -> 3."""
     for partition in psutil.disk_partitions(all=False):
         if partition.mountpoint == "/":
             match = _APFS_DISK_RE.match(partition.device or "")
@@ -82,17 +66,11 @@ def _root_disk_index() -> int | None:
 
 
 def _macos_is_external(partition, root_disk: int | None) -> bool:
-    """Three cheap signals, all observed on real macOS mount tables:
-
-    * ``ro`` - a mounted disk image (a DMG you opened), not a drive you can write to.
-    * ``dontbrowse`` - the OS mounted it for itself (Recovery, Preboot); Finder hides it.
-    * same ``/dev/diskN`` as ``/`` - it lives on the internal SSD.
-    """
     mount = partition.mountpoint
     if not mount.startswith("/Volumes/"):
         return False
     if mount in _MACOS_SKIP_MOUNTS or len(Path(mount).parts) != 3:
-        return False  # only volumes sitting directly in /Volumes, never nested mounts
+        return False
     opts = (partition.opts or "").split(",")
     if "ro" in opts or "dontbrowse" in opts:
         return False
@@ -103,13 +81,11 @@ def _macos_is_external(partition, root_disk: int | None) -> bool:
 
 
 def _is_candidate(partition, root_disk: int | None = None) -> tuple[bool, int | None]:
-    """Return (is_removable_or_external, windows_drive_type)."""
     mount = partition.mountpoint
     dtype: int | None = None
 
     if IS_WINDOWS:
         dtype = _windows_drive_type(mount)
-        # A drive letter that is not the system drive and is not a CD is worth showing.
         system_letter = str(Path(os.environ.get("SystemRoot", "C:\\")).drive or "C:").upper()
         letter = (Path(mount).drive or mount).upper().rstrip("\\")
         removable = dtype in (2, 4, 5) or (dtype in (0, 3) and letter != system_letter)
@@ -125,7 +101,6 @@ def _is_candidate(partition, root_disk: int | None = None) -> tuple[bool, int | 
         return False, None
     if mount.startswith(("/media/", "/mnt/", "/run/media/")):
         return True, None
-    # Any non-root mount on a real block device, excluding the OS's own layout.
     device = partition.device or ""
     if device.startswith(("/dev/sd", "/dev/mmcblk", "/dev/nvme", "/dev/disk")) and mount.count("/") >= 2:
         system_prefixes = ("/home", "/var", "/opt", "/usr", "/proc", "/sys", "/run", "/snap", "/boot", "/efi")
@@ -134,7 +109,6 @@ def _is_candidate(partition, root_disk: int | None = None) -> tuple[bool, int | 
 
 
 def list_drives() -> dict[str, Any]:
-    """Every mount that looks like a pendrive, plus the fallback default folder."""
     drives: list[dict[str, Any]] = []
     seen: set[str] = set()
     root_disk = _root_disk_index() if IS_MACOS else None
@@ -152,7 +126,6 @@ def list_drives() -> dict[str, Any]:
             continue
         writeable = os.access(partition.mountpoint, os.W_OK)
         if not writeable:
-            # A read-only disk image or a locked volume is not a destination; do not offer it.
             continue
         drives.append(
             {
@@ -181,7 +154,6 @@ def list_drives() -> dict[str, Any]:
 
 
 def default_folder() -> str:
-    """A sane place to write when no drive is plugged in."""
     if hosting.root() is not None:
         return str(hosting.root())
     if IS_MACOS:
@@ -196,7 +168,6 @@ def default_folder() -> str:
 
 
 def browse(path: str | None, include_files: bool = False) -> dict[str, Any]:
-    """One level of the filesystem for the custom-folder picker."""
     home = hosting.root() or Path.home()
     target = Path(path or "").expanduser() if path else home
     if not str(target):
@@ -230,7 +201,6 @@ def browse(path: str | None, include_files: bool = False) -> dict[str, Any]:
         except OSError:
             continue
 
-    # Windows needs drive letters as top-level destinations.
     if IS_WINDOWS and str(target) in (str(Path.home()), "C:\\"):
         for partition in psutil.disk_partitions(all=False):
             letter = partition.mountpoint.rstrip("\\")
@@ -249,7 +219,6 @@ def browse(path: str | None, include_files: bool = False) -> dict[str, Any]:
 
 
 def _is_mount_parent(path: Path) -> bool:
-    """Directories whose children are drive mount points, not ordinary folders."""
     text = str(path).rstrip("/")
     return text in ("/Volumes", "/mnt", "/media", "/run/media") or (
         text.startswith(("/media/", "/run/media/")) and text.count("/") == (2 if text.startswith("/media/") else 3)
@@ -257,16 +226,12 @@ def _is_mount_parent(path: Path) -> bool:
 
 
 def ensure_writable(path: str) -> Path:
-    """Create the destination if it is missing, and fail loudly if we cannot write."""
     target = Path(path).expanduser()
     if not str(path).strip():
         raise ValueError("No destination folder was given.")
     if not hosting.inside_root(target):
         raise ValueError(f"Downloads have to stay inside {hosting.root()} on this server.")
     if not target.exists():
-        # A folder inside a mounted drive may be created, but never the drive itself:
-        # mkdir on "/Volumes/MUSIC" after the stick was unplugged or renamed only ends
-        # in a confusing "Permission denied".
         ancestor = next((p for p in target.parents if p.exists()), None)
         if ancestor is not None and _is_mount_parent(ancestor):
             raise ValueError(
@@ -279,10 +244,7 @@ def ensure_writable(path: str) -> Path:
     return target
 
 
-# --------------------------------------------------------------------- formatting
-
 CAR_FILESYSTEMS = {
-    # label -> (human name, the argument each tool wants)
     "fat32": {"name": "FAT32", "macos": "MS-DOS", "mkfs": "mkfs.vfat", "windows": "FAT32"},
     "exfat": {"name": "exFAT", "macos": "ExFAT", "mkfs": "mkfs.exfat", "windows": "exFAT"},
 }
@@ -291,7 +253,6 @@ CONFIRM_TOKEN = "FORMAT"
 
 
 def _boot_device() -> str:
-    """The disk the running system lives on - never a legal format target."""
     for partition in psutil.disk_partitions(all=True):
         if partition.mountpoint in ("/", "C:\\", "D:\\"):
             if IS_MACOS or partition.mountpoint == "/":
@@ -303,11 +264,6 @@ def _boot_device() -> str:
 
 
 def format_plan(drive: dict[str, Any], fstype: str) -> tuple[list[str], str]:
-    """The command that would erase ``drive``, plus a warning about what is lost.
-
-    Kept apart from the execution so the UI can show the exact command before a person
-    types the confirmation word: an erase is the one operation this app cannot undo.
-    """
     spec = CAR_FILESYSTEMS.get(fstype)
     if not spec:
         raise ValueError(f"Unknown format {fstype}. Choose FAT32 or exFAT.")
@@ -318,7 +274,7 @@ def format_plan(drive: dict[str, Any], fstype: str) -> tuple[list[str], str]:
         raise ValueError("That drive did not report a device name, so it cannot be formatted here.")
 
     if IS_MACOS:
-        disk = re.sub(r"s\d+$", "", device)  # /dev/disk5s1 -> /dev/disk5
+        disk = re.sub(r"s\d+$", "", device)
         if not disk.startswith("/dev/disk"):
             raise ValueError(f"{device} is not a whole disk; eraseDisk needs /dev/diskN.")
         command = ["diskutil", "eraseDisk", spec["macos"], label, disk]
@@ -341,18 +297,11 @@ def format_plan(drive: dict[str, Any], fstype: str) -> tuple[list[str], str]:
 
 
 def sanitize_label(label: str) -> str:
-    """Volume names are 11 characters of FAT-safe uppercase on every OS."""
     text = re.sub(r"[^A-Za-z0-9_-]", "", (label or "").strip())[:11]
     return (text or "MUSICA").upper()
 
 
 def format_drive(path: str, fstype: str, confirm: str, label: str = "") -> dict[str, Any]:
-    """Erase and re-format a removable drive so a car will mount it.
-
-    Guarded three times over, because this is the one action that destroys user data: the
-    drive has to be in the list of detected removable/external volumes, it can never be the
-    disk the system booted from, and the caller must send the literal word FORMAT.
-    """
     if not hosting.allow_format():
         raise ValueError("Formatting drives is turned off on this server.")
     if confirm != CONFIRM_TOKEN:

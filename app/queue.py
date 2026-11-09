@@ -1,13 +1,3 @@
-"""The download queue: worker threads in, live progress out.
-
-yt-dlp is blocking, so downloads run on a small thread pool. Progress hooks mutate a
-track's state and then publish a snapshot to every Server-Sent-Events subscriber through
-``loop.call_soon_threadsafe`` - the only safe way to wake an asyncio queue from a thread.
-
-We publish whole snapshots instead of diffs. The payload is a few kilobytes, and it makes
-the browser side impossible to desynchronise after a reconnect or a missed event.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -21,7 +11,6 @@ from typing import Any
 from . import config, library, ytdl
 from .sanitize import normalize_key
 
-# Do not flood the browser: at most one progress event per track per interval.
 _PROGRESS_INTERVAL = 0.25
 MAX_HISTORY = 20
 
@@ -40,14 +29,13 @@ class Queue:
         self.loop: asyncio.AbstractEventLoop | None = None
         self._pool: ThreadPoolExecutor | None = None
         self._futures: list[Future] = []
-        self._pause = threading.Event()  # set == running
+        self._pause = threading.Event()
         self._pause.set()
         self._cancel = threading.Event()
         self._last_progress: dict[str, float] = {}
         self.paused = False
         self.logs: list[dict[str, Any]] = []
 
-    # ------------------------------------------------------------------ plumbing
 
     def bind_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         self.loop = loop
@@ -71,7 +59,6 @@ class Queue:
                 try:
                     queue.put_nowait(message)
                 except (asyncio.QueueFull, RuntimeError):
-                    # A stalled tab should never stall a download.
                     pass
 
         try:
@@ -89,7 +76,6 @@ class Queue:
             self.logs = self.logs[-400:]
         self.publish("log", entry)
 
-    # ------------------------------------------------------------------- state
 
     def state(self) -> dict[str, Any]:
         with self.lock:
@@ -143,7 +129,6 @@ class Queue:
             "tracks": [dict(track) for track in tracks],
         }
 
-    # ---------------------------------------------------------------- enqueue
 
     def enqueue(
         self,
@@ -154,7 +139,6 @@ class Queue:
         label: str = "",
         force: bool = False,
     ) -> dict[str, Any]:
-        """Add tracks to the queue, pre-filtering the ones we already have."""
         if not items:
             raise ValueError("Nothing was selected to download.")
         library.invalidate(destination)
@@ -185,7 +169,6 @@ class Queue:
                 "thumbnail": item.get("thumbnail"),
                 "playlist": item.get("playlist"),
                 "playlist_index": item.get("playlist_index"),
-                # Spotify items carry the clean metadata the tagger should trust.
                 "source": item.get("source") or "youtube",
                 "album": item.get("album") or "",
                 "year": item.get("year") or "",
@@ -203,8 +186,6 @@ class Queue:
             }
 
             if not force:
-                # The archive only says "downloaded once". If the file was deleted since,
-                # the song is not on the drive and must come back.
                 if track["id"] and track["id"].lower() in archive_ids and index.find_duplicate(
                     track["title"], track["artist"], track["duration"]
                 ):
@@ -321,7 +302,7 @@ class Queue:
                 on_progress=on_progress,
                 force=bool(track.get("force")),
             )
-        except Exception as exc:  # a crash in the worker must not strand the queue
+        except Exception as exc:
             result = {"status": ERROR, "error": str(exc)}
 
         with self.lock:
@@ -349,7 +330,6 @@ class Queue:
         self._last_progress.pop(track["key"], None)
         self.publish("update", self.state())
 
-    # --------------------------------------------------------------- controls
 
     def set_paused(self, paused: bool) -> dict[str, Any]:
         with self.lock:
@@ -378,7 +358,6 @@ class Queue:
         return self.state()
 
     def retry(self, track_keys: list[str], force: bool = True) -> dict[str, Any]:
-        """Re-queue failed or skipped tracks, optionally ignoring both duplicate checks."""
         items, destination = [], None
         with self.lock:
             for job in self.jobs:
@@ -414,5 +393,4 @@ class Queue:
         return self.state()
 
 
-# One process-wide queue: the app is a single-user desktop tool.
 queue = Queue()
