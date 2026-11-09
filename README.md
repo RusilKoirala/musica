@@ -94,7 +94,7 @@ A few things work differently on a server:
 - **Cookies.** Put `cookies.txt` in the data folder and set the path to `/data/cookies.txt` in Settings.
 - **HTTPS.** If you put it behind Caddy, Traefik or another reverse proxy, point it at the `web` container's port. Nothing else needs to change.
 
-To update, `git pull` and run `docker compose up -d --build` again.
+To update, `git pull` and run `docker compose up -d --build` again. With `make` installed there are shortcuts: `make` to start, `make logs`, `make update` and `make down`.
 
 ## Working on the web UI
 
