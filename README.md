@@ -88,6 +88,7 @@ Then open `http://<your-vm>:8080`. Songs are saved to `./music` on the VM and se
 A few things work differently on a server:
 
 - **Password.** With `MUSICA_PASSWORD` set, the page asks for it once and remembers you for 30 days. Leave it empty only if the VM is not reachable from outside your own network.
+- **Demo button.** Set `MUSICA_DEMO=1` to add a "Try the demo" button to the login page, handy for showing it to people without sharing the password. Demo visitors can search and download up to `MUSICA_DEMO_LIMIT` songs at a time (5 by default), but can't change server settings, update yt-dlp or touch drives.
 - **One folder.** Everything stays inside the music folder. The folder picker can't leave it and downloads can't be written outside it.
 - **Getting the files.** Finished songs have a download button in the queue, so you can save them from the VM to the device you're using.
 - **No formatting.** The format-drive button is turned off in the container.

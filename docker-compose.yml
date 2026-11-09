@@ -6,6 +6,8 @@ services:
     restart: unless-stopped
     environment:
       MUSICA_PASSWORD: ${MUSICA_PASSWORD:-}
+      MUSICA_DEMO: ${MUSICA_DEMO:-0}
+      MUSICA_DEMO_LIMIT: ${MUSICA_DEMO_LIMIT:-5}
     volumes:
       - ${MUSIC_DIR:-./music}:/music
       - ${DATA_DIR:-./data}:/data
