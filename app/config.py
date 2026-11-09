@@ -17,27 +17,19 @@ DEFAULTS: dict[str, Any] = {
     "quality": "320",  
     "destination": "",
     "playlist_subfolders": False,
-    # "artist_title" writes "Arijit Singh - Tum Hi Ho.mp3"; "title" writes just the song.
     "naming": "artist_title",
-    # Skip a track if a file with a near-identical normalized name already exists.
     "skip_name_duplicates": True,
-    # Keep the video-ID archive on the drive itself so a second PC inherits the history.
     "archive_on_drive": True,
-    # Download and convert on the internal disk, then copy one finished file to the drive.
     "stage_locally": True,
     "search_results": 10,
     "concurrency": 1,
     "cookiefile": "",
-    # Car/head-unit friendliness: ID3v2.3 + TYER + ID3v1.1 tail, a clean title in the
-    # file name, track numbers in front of the name, capped cover art and a folder.jpg.
     "car_mode": True,
-    # What the car's "Genre" view shows. YouTube does not tell us a genre.
     "car_genre": "Music",
-    # Prefix "01 - " so a playlist arrives in order on units that sort by file name.
     "number_files": True,
 }
 
-# Codecs we allow, mapped to their output extension.
+
 CODEC_EXTENSIONS = {
     "mp3": "mp3",
     "m4a": "m4a",
