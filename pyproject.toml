@@ -10,6 +10,7 @@ dependencies = [
     "psutil>=6.0",
     "mutagen>=1.47",
     "requests>=2.31",
+    "yt-dlp-ejs>=0.8.0",
 ]
 
 [tool.uv]
