@@ -1,27 +1,31 @@
-from __future__ import annotations
+from __future__ import annotations  
 
-import threading
+import threading  
 import time
+
+
 from pathlib import Path
 from typing import Any
 
-from .sanitize import is_audio_file, key_granularity, normalize_key, similar
+from .sanitize import is_audio_file, key_granularity,  normalize_key,  similar
 
 ARCHIVE_FILENAME = ".musica_archive.txt"
 
-INDEX_TTL_SECONDS = 120.0
-MAX_SCAN_DEPTH = 3
-NAME_MATCH_THRESHOLD = 0.86
+INDEX_TTL_SECONDS = 120.0  
+MAX_SCAN_DEPTH = 3 
+NAME_MATCH_THRESHOLD= 0.86
 DURATION_TOLERANCE_SECONDS = 12.0
 
-_STATE_SUFFIXES = (".part", ".ytdl", ".temp", ".tmp")
+_STATE_SUFFIXES=(".part", ".ytdl", ".temp", ".tmp")
 
 
 def archive_path(destination: str | Path, on_drive: bool = True) -> Path:
+
+
     root = Path(str(destination)).expanduser()
     if on_drive:
-        return root / ARCHIVE_FILENAME
-    from .config import CONFIG_DIR
+        return root / ARCHIVE_FILENAME 
+    from .config import CONFIG_DIR 
 
     slug = "".join(ch if ch.isalnum() else "_" for ch in str(root.resolve()))[:60]
     return CONFIG_DIR / "archives" / f"{slug}.txt"
@@ -30,57 +34,75 @@ def archive_path(destination: str | Path, on_drive: bool = True) -> Path:
 def read_archive_ids(path: Path) -> set[str]:
     ids: set[str] = set()
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = path.read_text(encoding="utf-8", errors= "replace")
     except OSError:
         return ids
     for line in text.splitlines():
-        line = line.strip()
+
+
+        line = line.strip()    
         if not line or line.startswith("#"):
             continue
-        parts = line.split()
+
+
+        parts= line.split()
         token = parts[-1]
+        # sometimes its a full url not an id, took me forever
         if "/" in token:
-            token = token.rstrip("/").rsplit("/", 1)[-1]
-            token = token.split("?", 1)[0]
+            token = token.rstrip("/").rsplit("/",  1)[-1]    
+            token = token.split("?",1)[0]
         if token:
-            ids.add(token.lower())
+            ids.add( token.lower())
     return ids
 
 
-def in_archive(ids: set[str], video_id: str) -> bool:
-    return bool(video_id) and video_id.lower() in ids
+def in_archive( ids: set[str], video_id: str) -> bool:
+    return bool( video_id) and video_id.lower() in ids
 
 
-class NameIndex:
-    def __init__(self, root: Path):
-        self.root = root
-        self.entries: list[dict[str, Any]] = []
-        self.built_at = 0.0
+class NameIndex:    
+
+
+    def __init__(self,  root: Path):
+        self.root =  root
+        self.entries: list[dict[str, Any]]= []
+        self.built_at =  0.0
         self.ready = False
+
+
+
         self.lock = threading.Lock()
 
-    def build(self, force: bool = False) -> "NameIndex":
-        with self.lock:
+    def build(self, force: bool= False) -> "NameIndex" :
+        with self.lock :
             if self.ready and not force and (time.time() - self.built_at) < INDEX_TTL_SECONDS:
                 return self
             self.entries = []
-            if self.root.is_dir():
+            if self.root.is_dir( ) :  
                 self._scan(self.root, depth=0)
-            self.built_at = time.time()
-            self.ready = True
+            self.built_at =time.time()
+
+
+
+            self.ready =  True
             return self
 
-    def _scan(self, directory: Path, depth: int) -> None:
+    def _scan(self, directory: Path,depth: int) -> None:
+
         try:
-            children = sorted(directory.iterdir(), key=lambda p: p.name.lower())
-        except OSError:
-            return
+            children = sorted(directory.iterdir(),  key=lambda p: p.name.lower())
+        except OSError: 
+            return    
+
+
         for child in children:
             name = child.name
-            if name.startswith(".") or name.endswith(_STATE_SUFFIXES):
+            if name.startswith(".") or name.endswith( _STATE_SUFFIXES):
                 continue
-            if child.is_dir():
+            if child.is_dir( ):
                 if depth + 1 < MAX_SCAN_DEPTH:
+
+
                     self._scan(child, depth + 1)
             elif child.is_file() and is_audio_file(child):
                 self.entries.append(
@@ -89,13 +111,13 @@ class NameIndex:
                         "display": child.relative_to(self.root).as_posix() if _is_under(child, self.root) else name,
                         "key": normalize_key(child.stem),
                         "duration": None,
-                        "mtime": _mtime(child),
+                        "mtime": _mtime(child),  
                     }
                 )
 
-    def add(self, path: Path) -> None:
+    def add( self, path: Path) -> None :
         with self.lock:
-            if not (path.exists() and is_audio_file(path)):
+            if not ( path.exists() and is_audio_file(path)):
                 return
             self.entries.append(
                 {
@@ -104,51 +126,56 @@ class NameIndex:
                     "key": normalize_key(path.stem),
                     "duration": None,
                     "mtime": _mtime(path),
-                }
+
+
+                }    
             )
 
-    def find_duplicate(self, title: str, artist: str = "", duration: float | None = None) -> dict[str, Any] | None:
-        self.build()
-        key = normalize_key(title, artist)
-        if not key:
+    def find_duplicate(self, title: str, artist: str = "",duration: float | None =None) -> dict[str,Any] | None:
+        self.build( )
+        key= normalize_key(title, artist)
+        if not key :
             return None
 
-        best: dict[str, Any] | None = None
+        best: dict[str, Any] | None= None
         best_score = 0.0
         for entry in self.entries:
-            score = similar(key, entry["key"])
+
+
+            score =  similar(key, entry["key"])
             if score <= best_score or score < NAME_MATCH_THRESHOLD:
                 continue
             length = _audio_duration(entry["path"])
-            if duration and length and abs(float(duration) - length) > DURATION_TOLERANCE_SECONDS:
+            if duration and length and abs(float(duration) - length) > DURATION_TOLERANCE_SECONDS: 
                 continue
-            if min(key_granularity(key), key_granularity(entry["key"])) <= 1:
+            if min( key_granularity(key), key_granularity(entry["key"])) <= 1 :
                 if not (duration and length and abs(float(duration) - length) <= DURATION_TOLERANCE_SECONDS):
                     continue
-            best, best_score = entry, score
 
-        if best is None:
+            best,  best_score = entry,  score
+
+        if best is None: 
             return None
-        return {"path": str(best["path"]), "display": best["display"], "score": round(best_score, 3)}
+        return {"path": str( best["path"]), "display": best["display"], "score": round(best_score, 3)}  
 
 
 _INDEXES: dict[str, NameIndex] = {}
 _INDEX_LOCK = threading.Lock()
 
 
-def index_for(destination: str | Path) -> NameIndex:
+def index_for(destination: str | Path) -> NameIndex :  
     root = Path(str(destination)).expanduser().resolve()
     with _INDEX_LOCK:
-        index = _INDEXES.get(str(root))
+        index=_INDEXES.get(str(root))
         if index is None:
-            index = NameIndex(root)
-            _INDEXES[str(root)] = index
+            index = NameIndex( root)
+            _INDEXES[str(root)] = index    
         return index
 
 
-def invalidate(destination: str | Path) -> None:
+def invalidate( destination: str | Path) -> None :  
     root = str(Path(str(destination)).expanduser().resolve())
-    with _INDEX_LOCK:
+    with _INDEX_LOCK: 
         _INDEXES.pop(root, None)
 
 
@@ -160,10 +187,10 @@ def _is_under(path: Path, root: Path) -> bool:
         return False
 
 
-def _mtime(path: Path) -> float:
+def _mtime( path: Path) -> float:
     try:
-        return path.stat().st_mtime
-    except OSError:
+        return path.stat( ).st_mtime  
+    except OSError :
         return 0.0
 
 
@@ -171,10 +198,10 @@ def _audio_duration(path: Path) -> float | None:
     try:
         from mutagen import File as MutagenFile
 
-        media = MutagenFile(str(path))
+        media =  MutagenFile(str(path))    
         if media is not None and getattr(media, "info", None) is not None:
             length = float(media.info.length or 0)
             return length or None
     except Exception:
-        pass
+        pass  
     return None

@@ -1,19 +1,19 @@
 from __future__ import annotations
 
 import re
-import threading
+import threading  
 from typing import Any
 
-SPOTIFY_URL_RE = re.compile(
+SPOTIFY_URL_RE= re.compile(
     r"(?:https?://)?open\.spotify\.com/(?:intl-[a-z]{2}(?:-[a-z]{2})?/)?(track|album|playlist)/([A-Za-z0-9]+)",
-    re.I,
+    re.I, 
 )
 
-_INIT_LOCK = threading.Lock()
+_INIT_LOCK =  threading.Lock()
 _ready = False
 
 
-def is_spotify(text: str) -> bool:
+def is_spotify(text: str) -> bool: 
     return bool(SPOTIFY_URL_RE.search(text or ""))
 
 
@@ -22,39 +22,47 @@ def _client() -> None:
     with _INIT_LOCK:
         if _ready:
             return
+        # import here so app still starts without spotdl
         from spotdl.utils.config import DEFAULT_CONFIG
         from spotdl.utils.spotify import SpotifyClient
 
-        try:
-            SpotifyClient.init(DEFAULT_CONFIG["client_id"], DEFAULT_CONFIG["client_secret"], no_cache=True)
-        except Exception as exc:
-            if "already been initialized" not in str(exc):
+        try :
+
+
+            SpotifyClient.init( DEFAULT_CONFIG["client_id"], DEFAULT_CONFIG["client_secret"], no_cache = True)
+        except Exception as exc :
+            if "already been initialized" not in str(exc):    
                 raise
-        _ready = True
+        _ready  = True
 
 
 _SIZE_300 = "ab67616d00001e02"
-_SIZE_640 = "ab67616d0000b273"
+_SIZE_640 ="ab67616d0000b273"
 
 
-def cover_for(track_id: str) -> str | None:
-    if not track_id:
-        return None
+def cover_for(track_id: str) -> str | None:  
+    if not track_id:    
+
+
+        return None  
     import json
     import urllib.request
 
     url = f"https://open.spotify.com/oembed?url=https://open.spotify.com/track/{track_id}"
     try:
-        request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(request, timeout=10) as response:
-            thumbnail = json.load(response).get("thumbnail_url")
+        request =  urllib.request.Request( url,headers= {"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen( request, timeout  = 10) as response :
+            thumbnail =json.load( response).get("thumbnail_url")
     except Exception:
+
+
         return None
-    return thumbnail.replace(_SIZE_300, _SIZE_640) if thumbnail else None
+
+    return thumbnail.replace(_SIZE_300,  _SIZE_640) if thumbnail else None
 
 
-def _fill_covers(items: list[dict[str, Any]]) -> None:
-    missing = [item for item in items if not item.get("thumbnail")]
+def _fill_covers(items: list[dict[str,Any]]) -> None:
+    missing =[item for item in items if not item.get("thumbnail")]
     if not missing:
         return
     from concurrent.futures import ThreadPoolExecutor
@@ -64,7 +72,7 @@ def _fill_covers(items: list[dict[str, Any]]) -> None:
             item["thumbnail"] = cover
 
 
-def search_query(artists: list[str], title: str) -> str:
+def search_query( artists: list[str],title: str) -> str:
     return f"{', '.join(artists)} - {title} audio"
 
 
@@ -72,49 +80,63 @@ def _item(song: Any, list_name: str | None, position: int | None) -> dict[str, A
     artists = list(song.artists or []) or [song.artist or ""]
     return {
         "id": song.song_id,
-        "url": "ytsearch:" + search_query(artists, song.name),
+        "url":"ytsearch:" + search_query(artists, song.name),
         "title": song.name,
         "artist": song.artist or artists[0],
+
+
         "duration": song.duration,
-        "thumbnail": song.cover_url,
+        "thumbnail": song.cover_url,    
         "playlist": list_name,
         "playlist_index": position,
         "album": song.album_name or "",
-        "year": str(song.year or "")[:4],
+        "year": str(song.year or "")[:4], 
         "uploader": ", ".join(artists),
         "source": "spotify",
     }
 
 
 def resolve(text: str) -> dict[str, Any]:
-    match = SPOTIFY_URL_RE.search(text or "")
-    if not match:
+    match  = SPOTIFY_URL_RE.search( text or "")
+
+
+    if not match: 
         raise ValueError("That is not a Spotify track, album or playlist link.")
-    kind, spotify_id = match.group(1).lower(), match.group(2)
+    kind,spotify_id = match.group(1).lower(),  match.group(2)
     url = f"https://open.spotify.com/{kind}/{spotify_id}"
-    _client()
+    _client()  
+
+
+
 
     from spotdl.types.album import Album
-    from spotdl.types.playlist import Playlist
+    from spotdl.types.playlist import Playlist    
     from spotdl.types.song import Song
 
     if kind == "track":
-        songs, title = [Song.from_url(url)], None
+        songs,title = [Song.from_url(url)],None
     else:
-        meta, songs = (Album if kind == "album" else Playlist).get_metadata(url)
-        title = meta.get("name") or ("Album" if kind == "album" else "Playlist")
+        meta,  songs = (Album if kind == "album" else Playlist).get_metadata( url)
+        title= meta.get("name") or ("Album" if kind == "album" else "Playlist")
 
-    items = [
-        _item(song, title, index if title else None)
-        for index, song in enumerate(songs, start=1)
+    items = [    
+        _item( song, title, index if title else None)
+        for index, song in enumerate(songs, start  = 1)
         if song and song.song_id
-    ]
-    _fill_covers(items)
+    ] 
+    _fill_covers(items) 
     return {
         "kind": "spotify",
         "query": url,
         "url": url,
+
+
+
         "playlist_title": title,
         "is_playlist": title is not None,
+
+
         "items": items,
     }
+
+

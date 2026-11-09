@@ -3,6 +3,7 @@
 Musica is basically just think of a simple way to download music
 
 you can paste link of spotify or yt and it will download the music for you 
+this was previously local project that i had made but i continued it 
 
 ![Musica in YouTube mode](images/youtube-mode.png)
 
