@@ -113,6 +113,21 @@ function App({ health, onHealth, onSignOut }: { health: Health | null; onHealth:
     document.title = left ? `(${left}) Musica` : "Musica";
   }, [left]);
 
+  // Say so once when a batch finishes, wherever the person is on the page.
+  const seen = useRef<Map<string, string>>(new Map());
+  useEffect(() => {
+    for (const job of queue?.jobs ?? []) {
+      const before = seen.current.get(job.id);
+      seen.current.set(job.id, job.status);
+      if (before && before !== "finished" && job.status === "finished") {
+        const { done, error } = job.counts;
+        const text = `${job.label || "Download"}: ${plural(done, "song")} saved`;
+        if (error) toast.warning(`${text}, ${error} failed`);
+        else toast.success(text);
+      }
+    }
+  }, [queue]);
+
   const loadDrives = useCallback(async () => {
     setRefreshing(true);
     try {
