@@ -22,3 +22,5 @@ Thumbs.db
 .env
 music/
 data/
+cookies.txt
+*.cookies.txt
