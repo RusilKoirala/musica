@@ -21,6 +21,8 @@ from typing import Any
 
 import psutil
 
+from . import hosting
+
 IS_MACOS = sys.platform == "darwin"
 IS_WINDOWS = os.name == "nt"
 
@@ -168,6 +170,8 @@ def list_drives() -> dict[str, Any]:
         )
 
     drives.sort(key=lambda item: (not item["writeable"], item["kind"] != "removable", item["path"]))
+    if hosting.root() is not None:
+        drives = [drive for drive in drives if hosting.inside_root(drive["path"])]
     return {
         "os": "windows" if IS_WINDOWS else ("macos" if IS_MACOS else "linux"),
         "drives": drives,
@@ -178,6 +182,8 @@ def list_drives() -> dict[str, Any]:
 
 def default_folder() -> str:
     """A sane place to write when no drive is plugged in."""
+    if hosting.root() is not None:
+        return str(hosting.root())
     if IS_MACOS:
         return str(Path.home() / "Music" / "Musica")
     if IS_WINDOWS:
@@ -191,9 +197,11 @@ def default_folder() -> str:
 
 def browse(path: str | None, include_files: bool = False) -> dict[str, Any]:
     """One level of the filesystem for the custom-folder picker."""
-    target = Path(path or "").expanduser() if path else Path.home()
+    home = hosting.root() or Path.home()
+    target = Path(path or "").expanduser() if path else home
     if not str(target):
-        target = Path.home()
+        target = home
+    target = hosting.clamp(target)
     try:
         target = target.resolve()
     except OSError:
@@ -230,9 +238,10 @@ def browse(path: str | None, include_files: bool = False) -> dict[str, Any]:
                 dirs.insert(0, {"name": letter, "path": partition.mountpoint})
 
     parent = target.parent
+    has_parent = parent != target and hosting.inside_root(parent)
     return {
         "path": str(target),
-        "parent": str(parent) if parent != target else None,
+        "parent": str(parent) if has_parent else None,
         "dirs": dirs,
         "files": files,
         "error": None,
@@ -252,6 +261,8 @@ def ensure_writable(path: str) -> Path:
     target = Path(path).expanduser()
     if not str(path).strip():
         raise ValueError("No destination folder was given.")
+    if not hosting.inside_root(target):
+        raise ValueError(f"Downloads have to stay inside {hosting.root()} on this server.")
     if not target.exists():
         # A folder inside a mounted drive may be created, but never the drive itself:
         # mkdir on "/Volumes/MUSIC" after the stick was unplugged or renamed only ends
@@ -342,6 +353,8 @@ def format_drive(path: str, fstype: str, confirm: str, label: str = "") -> dict[
     drive has to be in the list of detected removable/external volumes, it can never be the
     disk the system booted from, and the caller must send the literal word FORMAT.
     """
+    if not hosting.allow_format():
+        raise ValueError("Formatting drives is turned off on this server.")
     if confirm != CONFIRM_TOKEN:
         raise ValueError(f'Type "{CONFIRM_TOKEN}" to confirm: this erases the whole drive.')
     wanted = str(Path(path).expanduser()).rstrip("/")

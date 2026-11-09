@@ -9,22 +9,27 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sys
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, AsyncIterator
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import __version__, config, drives, library, spotify, ytdl
+from . import __version__, config, drives, hosting, library, spotify, ytdl
 from .queue import queue
 
 APP_DIR = Path(__file__).resolve().parent
 STATIC_DIR = APP_DIR.parent / "static"
+# The Next.js build (`npm run build` in web/). When it is missing the old page is served.
+WEB_DIR = Path(os.environ.get("MUSICA_WEB_DIR") or (APP_DIR.parent / "web" / "out"))
+AUDIO_EXTENSIONS = {"." + ext for ext in config.CODEC_EXTENSIONS.values()}
 
 
 @asynccontextmanager
@@ -46,6 +51,32 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="Musica", version=__version__, docs_url=None, redoc_url=None, lifespan=lifespan)
+
+if hosting.cors_origins():
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=hosting.cors_origins(),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+# Reachable without signing in: the page needs these to know whether to show a login.
+_OPEN_PATHS = {"/api/health", "/api/login", "/api/logout"}
+
+
+@app.middleware("http")
+async def require_login(request: Request, call_next):
+    path = request.url.path
+    if (
+        hosting.auth_enabled()
+        and path.startswith("/api/")
+        and path not in _OPEN_PATHS
+        and request.method != "OPTIONS"
+        and not hosting.check_token(request.cookies.get(hosting.COOKIE_NAME))
+    ):
+        return JSONResponse({"detail": "Sign in first."}, status_code=401)
+    return await call_next(request)
 
 
 # ----------------------------------------------------------------------- models
@@ -83,6 +114,10 @@ class BrowseRequest(BaseModel):
     include_files: bool = False
 
 
+class LoginRequest(BaseModel):
+    password: str = ""
+
+
 class FormatRequest(BaseModel):
     path: str = Field(min_length=1)
     fstype: str = "fat32"
@@ -111,7 +146,42 @@ def health() -> dict[str, Any]:
         "ffmpeg": ffmpeg,
         "js_runtime": ytdl.js_runtime(),
         "python": sys.version.split()[0],
+        "auth": hosting.auth_enabled(),
+        "can_format": hosting.allow_format(),
+        "root": str(hosting.root()) if hosting.root() else None,
     }
+
+
+@app.get("/api/me")
+def me() -> dict[str, Any]:
+    # The middleware already rejected anyone without a session.
+    return {"ok": True}
+
+
+@app.post("/api/login")
+def login(body: LoginRequest, request: Request) -> JSONResponse:
+    if not hosting.auth_enabled():
+        return JSONResponse({"ok": True})
+    if not hosting.check_password(body.password):
+        time.sleep(0.6)  # makes guessing slow
+        raise HTTPException(401, "Wrong password.")
+    response = JSONResponse({"ok": True})
+    response.set_cookie(
+        hosting.COOKIE_NAME,
+        hosting.session_token(),
+        max_age=60 * 60 * 24 * 30,
+        httponly=True,
+        samesite="lax",
+        secure=request.url.scheme == "https",
+    )
+    return response
+
+
+@app.post("/api/logout")
+def logout() -> JSONResponse:
+    response = JSONResponse({"ok": True})
+    response.delete_cookie(hosting.COOKIE_NAME)
+    return response
 
 
 @app.post("/api/selfupdate")
@@ -163,6 +233,8 @@ def get_drives() -> dict[str, Any]:
 @app.post("/api/drives/plan")
 def format_plan(body: FormatRequest) -> dict[str, Any]:
     """What would be run, so the dialog can show it before anything is erased."""
+    if not hosting.allow_format():
+        raise HTTPException(403, "Formatting drives is turned off on this server.")
     drive = next((d for d in drives.list_drives()["drives"] if str(d["path"]).rstrip("/") == body.path.rstrip("/")), None)
     if drive is None:
         raise HTTPException(400, "Only a detected removable or external drive can be formatted.")
@@ -283,6 +355,27 @@ def download(body: DownloadRequest) -> dict[str, Any]:
         raise HTTPException(400, str(exc)) from exc
 
 
+@app.get("/api/file")
+def download_file(path: str) -> FileResponse:
+    """Hand a finished song to the browser, for when the server is not your own laptop."""
+    target = Path(path).expanduser()
+    try:
+        target = target.resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise HTTPException(404, "That file is gone.") from exc
+    if not target.is_file() or target.suffix.lower() not in AUDIO_EXTENSIONS:
+        raise HTTPException(404, "Only downloaded songs can be fetched.")
+    if not hosting.inside_root(target):
+        raise HTTPException(403, "That file is outside the music folder.")
+    if hosting.root() is None and not any(
+        target.is_relative_to(Path(job["destination"]).expanduser().resolve())
+        for job in queue.state()["jobs"]
+    ):
+        # Without a root folder, only serve songs this queue itself wrote.
+        raise HTTPException(403, "Only songs from the queue can be fetched.")
+    return FileResponse(target, filename=target.name)
+
+
 @app.get("/api/queue")
 def queue_state() -> dict[str, Any]:
     return queue.state()
@@ -340,26 +433,28 @@ async def events() -> StreamingResponse:
 
 # --------------------------------------------------------------------- frontend
 
+def _page() -> Path:
+    built = WEB_DIR / "index.html"
+    return built if built.is_file() else STATIC_DIR / "index.html"
+
+
 @app.get("/")
 def index() -> FileResponse:
-    return FileResponse(
-        STATIC_DIR / "index.html",
-        headers={"Cache-Control": "no-cache, must-revalidate"}
-    )
+    return FileResponse(_page(), headers={"Cache-Control": "no-cache, must-revalidate"})
 
 
 @app.get("/spotify")
 def spotify_mode() -> FileResponse:
-    # Same page, same controls; the script reads the path and switches to Spotify copy.
-    return FileResponse(
-        STATIC_DIR / "index.html",
-        headers={"Cache-Control": "no-cache, must-revalidate"}
-    )
+    # Same page, same controls; the page reads the path and switches to Spotify copy.
+    return FileResponse(_page(), headers={"Cache-Control": "no-cache, must-revalidate"})
 
 
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon() -> Response:
-    return Response(status_code=204)
+    icon = WEB_DIR / "favicon.ico"
+    return FileResponse(icon) if icon.is_file() else Response(status_code=204)
 
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+if WEB_DIR.is_dir():
+    app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")

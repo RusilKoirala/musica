@@ -1,8 +1,3 @@
-"""Persistent user settings.
-
-Stored in ~/.config/musica/settings.json so the choice of quality, format and
-last destination survives restarts without needing a database.
-"""
 
 from __future__ import annotations
 
@@ -17,12 +12,10 @@ CONFIG_DIR = Path(os.environ.get("MUSICA_CONFIG_DIR") or (Path.home() / ".config
 CONFIG_FILE = CONFIG_DIR / "settings.json"
 
 DEFAULTS: dict[str, Any] = {
-    # Audio output. "mp3" keeps the widest pendrive/car-stereo compatibility.
+   
     "format": "mp3",
-    "quality": "320",  # mp3 VBR-less bitrate in kbps
-    # Where to write. Empty means "ask me each time" (the UI falls back to ~/Music/Musica).
+    "quality": "320",  
     "destination": "",
-    # Group playlist downloads into a subfolder named after the playlist.
     "playlist_subfolders": False,
     # "artist_title" writes "Arijit Singh - Tum Hi Ho.mp3"; "title" writes just the song.
     "naming": "artist_title",
